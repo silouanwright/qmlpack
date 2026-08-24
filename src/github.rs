@@ -15,7 +15,7 @@ use std::time::Duration;
 const API_JSON_LIMIT: usize = 2 * 1024 * 1024;
 const TREE_ENTRIES_LIMIT: usize = 4096;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResolvedPackage {
     pub source: Source,
     pub repository_id: u64,
