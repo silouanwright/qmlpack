@@ -11,9 +11,9 @@ through package-provided code would make its trust boundary recursive.
 
 ## Decision
 
-Implement Omapack as a dependency-free Python CLI and distribute it separately
-from packages. Do not allow Omapack packages to install or update Omapack. The
-initial repository documents direct, pinned installation; a signed Arch/AUR or
+Implement Omapack as a standalone Rust binary and distribute it separately from
+packages. Do not allow Omapack packages to install or update Omapack. The
+initial repository documents pinned release binaries; a signed Arch/AUR or
 Omarchy-supported system package may follow when release demand exists.
 
 The CLI does not silently self-update. Its own releases follow a conventional
@@ -21,6 +21,6 @@ repository release process outside the source package protocol.
 
 ## Consequences
 
-Bootstrap remains inspectable and does not require a package registry. Native
-packaging work is postponed until there is a stable CLI contract worth
-distributing.
+Bootstrap remains inspectable and does not require a package registry or
+language runtime. Native packaging work is postponed until there is a stable
+CLI contract worth distributing.

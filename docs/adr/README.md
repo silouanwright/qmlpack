@@ -4,7 +4,7 @@
 - [0002: GitHub direct transport](0002-github-direct-transport.md)
 - [0003: Git tags own released versions](0003-tag-owned-versions.md)
 - [0004: Review before mutation](0004-review-before-mutation.md)
-- [0005: Python standard-library CLI](0005-python-stdlib-cli.md)
+- [0005: Standalone Rust CLI](0005-standalone-rust-cli.md)
 - [0006: Decentralized base and host evolution](0006-decentralized-base-and-host-evolution.md)
 - [0007: Explicit bounded package envelope](0007-explicit-bounded-package-envelope.md)
 - [0008: Source identity and repository transfer](0008-source-identity-and-repository-transfer.md)
