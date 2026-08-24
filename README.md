@@ -47,6 +47,7 @@ The normative contracts live in:
 - [Threat model](docs/threat-model.md)
 - [Review policy](docs/review-policy.md)
 - [Architecture decisions](docs/adr/README.md)
+- [Research synthesis and primary sources](docs/research.md)
 
 ## Planned first workflow
 
