@@ -57,6 +57,12 @@ The normative contracts live in:
 
 ## Workflow
 
+Build and install the current checkout with the standard Rust toolchain:
+
+```bash
+cargo install --path .
+```
+
 ```bash
 qmlpack init
 qmlpack add oma-ui github:silouanwright/omatools/packages/oma-ui@0.2.0
@@ -71,6 +77,9 @@ or publishing it:
 ```bash
 qmlpack release-check packages/oma-ui
 ```
+
+See [Release handoff](docs/releasing.md) for the remaining GitHub and npm
+publication steps. Qmlpack never performs those credentialed actions itself.
 
 ## License
 
