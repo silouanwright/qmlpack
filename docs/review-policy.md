@@ -4,7 +4,7 @@ Packages are source code that will run as part of a desktop environment. The
 developer consuming a package is responsible for reviewing every installation
 and every update.
 
-Omapack verifies provenance, integrity, and reproducibility. It does not decide
+Qmlpack verifies provenance, integrity, and reproducibility. It does not decide
 whether code is trustworthy.
 
 ## Required interaction
@@ -28,7 +28,7 @@ Static indicators are review aids, not proof of safety.
 ## Human and AI review
 
 Developers may inspect changes manually, ask an AI coding agent to review the
-materialized candidate, or do both. Omapack provides deterministic Markdown and
+materialized candidate, or do both. Qmlpack provides deterministic Markdown and
 JSON review output for that purpose.
 
 AI review can miss malicious behavior, indirect execution, vulnerabilities, or

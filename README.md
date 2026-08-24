@@ -1,42 +1,45 @@
-# Omapack
+# Qmlpack
 
-Omapack turns ad hoc source copying into a traceable, reproducible, and
-reviewable workflow for Omarchy plugin development.
+Qmlpack turns ad hoc QML source copying into a traceable, reproducible, and
+reviewable dependency workflow. It supports portable QML, Quickshell code, and
+Omarchy-aware packages, with Omarchy as its first fully validated host.
 
 Omarchy plugins are self-contained Git repositories today. That makes shared
 QML components and utilities easy to copy but difficult to identify, update,
-or audit later. Omapack vendors declared source files into a plugin and records
+or audit later. Qmlpack vendors declared source files into a plugin and records
 their exact origin, commit, and content digest.
 
-Omapack verifies **what** you installed. It does not certify that third-party
+Qmlpack verifies **what** you installed. It does not certify that third-party
 code is safe. Review every package before installation and every change before
 an update, manually or with an AI coding agent. AI review is useful but is not
 a security guarantee.
 
 ## Status
 
-Omapack is under active development. Its first supported profile is Omarchy
-4.x. The package format is intentionally source-oriented, but standalone
-Quickshell support is not yet promised.
+Qmlpack is under active development and is not affiliated with Qt, Quickshell,
+npm, or Omarchy. Its first supported host profile is Omarchy 4.x. Portable QML
+and Quickshell packages use the same source envelope without claiming support
+for every standalone shell's integration conventions.
 
 ## Design
 
-- GitHub repositories are the initial source and distribution layer.
+- npm is the preferred release registry; exact GitHub sources remain supported.
 - Packages declare an explicit, bounded list of files.
-- Releases use package-prefixed SemVer Git tags such as `oma-ui/v0.2.0`.
-- Lockfiles pin the stable repository ID, tag, commit, and canonical SHA-256.
-- Installed source is committed under `vendor/omapack/` with the plugin.
+- npm releases use immutable scoped name/version pairs; GitHub packages may use
+  exact commits or package-prefixed SemVer tags.
+- Lockfiles pin transport identity, resolved source, integrity, and canonical
+  SHA-256.
+- Installed source is committed under `vendor/qmlpack/` with the plugin.
 - Adds and updates stop for inspection before changing the working tree.
 - There are no install hooks or automatic updates.
 
-The initial ecosystem is decentralized: authors publish from their own GitHub
-repositories and consumers use fully qualified sources. If adoption warrants
-it, searchable or curated indexes can be layered on top without becoming the
-authority for package contents.
+Qmlpack does not operate a package registry. Authors may publish immutable
+releases to npm or use fully qualified GitHub sources. Qmlpack talks to those
+services directly without invoking `npm install` or executing package hooks.
 
 Committed vendoring is also a compatibility strategy for Omarchy's current
 plugin contract, not an assumption that must last forever. If
-`omarchy plugin add` later installs declared dependencies itself, Omapack can
+`omarchy plugin add` later installs declared dependencies itself, Qmlpack can
 resolve and lock packages for the host installer instead of committing their
 source into each plugin. Existing manifests and lockfiles remain useful in
 either model.
@@ -52,11 +55,11 @@ The normative contracts live in:
 ## Planned first workflow
 
 ```bash
-omapack init
-omapack add github:silouanwright/omatools/oma-ui@v0.1.0
-omapack diff oma-ui
-omapack add github:silouanwright/omatools/oma-ui@v0.1.0 --apply
-omapack verify
+qmlpack init
+qmlpack add oma-ui npm:@silouanwright/oma-ui@0.1.0
+qmlpack diff oma-ui
+qmlpack apply
+qmlpack verify
 ```
 
 The exact command contract will be stabilized alongside the first end-to-end

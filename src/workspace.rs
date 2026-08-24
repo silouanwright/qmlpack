@@ -1,6 +1,6 @@
 use crate::project::{Lockfile, ProjectManifest};
 use crate::resolver::ResolvedGraph;
-use crate::{MANIFEST_LIMIT, OmapackError, PackageFile, PackageManifest, package_digest};
+use crate::{MANIFEST_LIMIT, PackageFile, PackageManifest, QmlpackError, package_digest};
 use similar::TextDiff;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
@@ -9,13 +9,13 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use tempfile::Builder;
 
-const PROJECT_FILE: &str = "omapack.json";
-const LOCK_FILE: &str = "omapack.lock";
-const STATE_DIR: &str = ".omapack";
+const PROJECT_FILE: &str = "qmlpack.json";
+const LOCK_FILE: &str = "qmlpack.lock";
+const STATE_DIR: &str = ".qmlpack";
 const CANDIDATE_DIR: &str = "candidate";
-const VENDOR_DIR: &str = "vendor/omapack";
+const VENDOR_DIR: &str = "vendor/qmlpack";
 
-pub fn initialize(root: &Path) -> Result<(), OmapackError> {
+pub fn initialize(root: &Path) -> Result<(), QmlpackError> {
     fs::create_dir_all(root)?;
     let path = root.join(PROJECT_FILE);
     let mut file = OpenOptions::new()
@@ -24,7 +24,7 @@ pub fn initialize(root: &Path) -> Result<(), OmapackError> {
         .open(&path)
         .map_err(|error| {
             if error.kind() == std::io::ErrorKind::AlreadyExists {
-                OmapackError(format!("{} already exists", path.display()))
+                QmlpackError(format!("{} already exists", path.display()))
             } else {
                 error.into()
             }
@@ -39,17 +39,17 @@ pub fn initialize(root: &Path) -> Result<(), OmapackError> {
     Ok(())
 }
 
-pub fn read_project(root: &Path) -> Result<ProjectManifest, OmapackError> {
+pub fn read_project(root: &Path) -> Result<ProjectManifest, QmlpackError> {
     let path = root.join(PROJECT_FILE);
     let bytes = read_bounded(&path, MANIFEST_LIMIT)?;
     ProjectManifest::parse(&bytes)
 }
 
-pub fn read_lock(root: &Path) -> Result<Option<Lockfile>, OmapackError> {
+pub fn read_lock(root: &Path) -> Result<Option<Lockfile>, QmlpackError> {
     let path = root.join(LOCK_FILE);
     match fs::read(&path) {
         Ok(bytes) if bytes.len() <= 4 * MANIFEST_LIMIT => Lockfile::parse(&bytes).map(Some),
-        Ok(_) => Err(OmapackError(format!("{} is too large", path.display()))),
+        Ok(_) => Err(QmlpackError(format!("{} is too large", path.display()))),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.into()),
     }
@@ -59,7 +59,7 @@ pub fn prepare(
     root: &Path,
     project: &ProjectManifest,
     graph: &ResolvedGraph,
-) -> Result<String, OmapackError> {
+) -> Result<String, QmlpackError> {
     recover(root)?;
     let state = root.join(STATE_DIR);
     ensure_real_directory(&state)?;
@@ -71,7 +71,7 @@ pub fn prepare(
         let destination = vendor.join(label);
         fs::create_dir_all(&destination)?;
         atomic_write(
-            &destination.join(".omapack-package.json"),
+            &destination.join(".qmlpack-package.json"),
             &package.manifest.raw,
             0o644,
         )?;
@@ -110,12 +110,12 @@ pub fn prepare(
     Ok(review)
 }
 
-pub fn candidate_review(root: &Path) -> Result<String, OmapackError> {
+pub fn candidate_review(root: &Path) -> Result<String, QmlpackError> {
     fs::read_to_string(root.join(STATE_DIR).join(CANDIDATE_DIR).join("review.md"))
-        .map_err(|error| OmapackError(format!("no prepared candidate: {error}")))
+        .map_err(|error| QmlpackError(format!("no prepared candidate: {error}")))
 }
 
-pub fn apply(root: &Path, force: bool) -> Result<(), OmapackError> {
+pub fn apply(root: &Path, force: bool) -> Result<(), QmlpackError> {
     recover(root)?;
     verify_installed(root, force)?;
     let state = root.join(STATE_DIR);
@@ -154,7 +154,7 @@ pub fn apply(root: &Path, force: bool) -> Result<(), OmapackError> {
         fs::remove_file(&marker)?;
         remove_tree_if_present(&backup)?;
         remove_tree_if_present(&candidate)?;
-        Ok::<_, OmapackError>(())
+        Ok::<_, QmlpackError>(())
     })();
     if result.is_err() {
         let _ = recover(root);
@@ -162,16 +162,16 @@ pub fn apply(root: &Path, force: bool) -> Result<(), OmapackError> {
     result
 }
 
-pub fn verify(root: &Path) -> Result<(), OmapackError> {
+pub fn verify(root: &Path) -> Result<(), QmlpackError> {
     recover(root)?;
     verify_installed(root, false)
 }
 
-fn verify_installed(root: &Path, allow_modified: bool) -> Result<(), OmapackError> {
+fn verify_installed(root: &Path, allow_modified: bool) -> Result<(), QmlpackError> {
     let Some(lock) = read_lock(root)? else {
         if root.join(VENDOR_DIR).exists() && !allow_modified {
-            return Err(OmapackError(
-                "vendor/omapack exists without an omapack.lock".into(),
+            return Err(QmlpackError(
+                "vendor/qmlpack exists without an qmlpack.lock".into(),
             ));
         }
         return Ok(());
@@ -183,24 +183,24 @@ fn verify_installed(root: &Path, allow_modified: bool) -> Result<(), OmapackErro
     }
 }
 
-fn verify_tree(vendor: &Path, lock: &Lockfile) -> Result<(), OmapackError> {
+fn verify_tree(vendor: &Path, lock: &Lockfile) -> Result<(), QmlpackError> {
     let expected_labels: BTreeSet<_> = lock.packages.keys().cloned().collect();
     let actual_labels = directory_names(vendor)?;
     if actual_labels != expected_labels {
-        return Err(OmapackError(
+        return Err(QmlpackError(
             "installed package directories do not match the lockfile".into(),
         ));
     }
     for (label, package) in &lock.packages {
         let package_root = vendor.join(label);
         let manifest_bytes =
-            read_bounded(&package_root.join(".omapack-package.json"), MANIFEST_LIMIT)?;
+            read_bounded(&package_root.join(".qmlpack-package.json"), MANIFEST_LIMIT)?;
         let manifest = PackageManifest::parse(&manifest_bytes)?;
         let actual_paths = regular_file_paths(&package_root)?;
         let mut expected_paths: BTreeSet<_> = package.files.keys().cloned().collect();
-        expected_paths.insert(".omapack-package.json".into());
+        expected_paths.insert(".qmlpack-package.json".into());
         if actual_paths != expected_paths {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "installed files for {label} do not match the lockfile"
             )));
         }
@@ -215,22 +215,22 @@ fn verify_tree(vendor: &Path, lock: &Lockfile) -> Result<(), OmapackError> {
             let expected = package
                 .files
                 .get(path)
-                .ok_or_else(|| OmapackError(format!("lock is missing {label}/{path}")))?;
+                .ok_or_else(|| QmlpackError(format!("lock is missing {label}/{path}")))?;
             if &file.digest() != expected {
-                return Err(OmapackError(format!(
+                return Err(QmlpackError(format!(
                     "locally modified managed file: {label}/{path}"
                 )));
             }
             files.push(file);
         }
         if package_digest(&manifest, &files)? != package.digest {
-            return Err(OmapackError(format!("package digest mismatch: {label}")));
+            return Err(QmlpackError(format!("package digest mismatch: {label}")));
         }
     }
     Ok(())
 }
 
-pub fn recover(root: &Path) -> Result<(), OmapackError> {
+pub fn recover(root: &Path) -> Result<(), QmlpackError> {
     let state = root.join(STATE_DIR);
     let marker = state.join("transaction.json");
     if !marker.exists() {
@@ -256,10 +256,10 @@ fn review_markdown(
     lock: &Lockfile,
     candidate_vendor: &Path,
     displayed_vendor: &Path,
-) -> Result<String, OmapackError> {
+) -> Result<String, QmlpackError> {
     let previous = read_lock(root)?.unwrap_or_else(Lockfile::empty);
     let mut output = String::from(
-        "# Omapack review\n\nIntegrity is verified; package safety is not. Inspect all source before applying.\n\n",
+        "# Qmlpack review\n\nIntegrity is verified; package safety is not. Inspect all source before applying.\n\n",
     );
     for (label, package) in &lock.packages {
         let status = match previous.packages.get(label) {
@@ -299,7 +299,7 @@ fn append_source_diffs(
     installed: &Path,
     candidate: &Path,
     lock: &Lockfile,
-) -> Result<(), OmapackError> {
+) -> Result<(), QmlpackError> {
     const TEXT_FILE_LIMIT: usize = 256 * 1024;
     const REVIEW_LIMIT: usize = 2 * 1024 * 1024;
     output.push_str("# Source changes\n\n");
@@ -365,7 +365,7 @@ fn append_source_diffs(
     Ok(())
 }
 
-fn write_package_file(root: &Path, file: &PackageFile) -> Result<(), OmapackError> {
+fn write_package_file(root: &Path, file: &PackageFile) -> Result<(), QmlpackError> {
     let destination = root.join(&file.path);
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent)?;
@@ -377,13 +377,13 @@ fn write_package_file(root: &Path, file: &PackageFile) -> Result<(), OmapackErro
     )
 }
 
-fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> Result<(), OmapackError> {
+fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> Result<(), QmlpackError> {
     let parent = path
         .parent()
-        .ok_or_else(|| OmapackError("path has no parent".into()))?;
+        .ok_or_else(|| QmlpackError("path has no parent".into()))?;
     fs::create_dir_all(parent)?;
     let mut temporary = Builder::new()
-        .prefix(".omapack-write-")
+        .prefix(".qmlpack-write-")
         .tempfile_in(parent)?;
     temporary
         .as_file_mut()
@@ -392,14 +392,14 @@ fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> Result<(), OmapackError
     temporary.as_file_mut().sync_all()?;
     temporary
         .persist(path)
-        .map_err(|error| OmapackError(error.error.to_string()))?;
+        .map_err(|error| QmlpackError(error.error.to_string()))?;
     Ok(())
 }
 
-fn ensure_real_directory(path: &Path) -> Result<(), OmapackError> {
+fn ensure_real_directory(path: &Path) -> Result<(), QmlpackError> {
     match fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_dir() => Ok(()),
-        Ok(_) => Err(OmapackError(format!(
+        Ok(_) => Err(QmlpackError(format!(
             "{} must be a real directory",
             path.display()
         ))),
@@ -410,17 +410,17 @@ fn ensure_real_directory(path: &Path) -> Result<(), OmapackError> {
     }
 }
 
-fn read_bounded(path: &Path, limit: usize) -> Result<Vec<u8>, OmapackError> {
+fn read_bounded(path: &Path, limit: usize) -> Result<Vec<u8>, QmlpackError> {
     let metadata = fs::symlink_metadata(path)?;
     if !metadata.file_type().is_file() || metadata.len() > limit as u64 {
-        return Err(OmapackError(format!(
+        return Err(QmlpackError(format!(
             "{} is not a bounded regular file",
             path.display()
         )));
     }
     let bytes = fs::read(path)?;
     if bytes.len() > limit {
-        return Err(OmapackError(format!(
+        return Err(QmlpackError(format!(
             "{} exceeds {limit} bytes",
             path.display()
         )));
@@ -428,7 +428,7 @@ fn read_bounded(path: &Path, limit: usize) -> Result<Vec<u8>, OmapackError> {
     Ok(bytes)
 }
 
-fn directory_names(path: &Path) -> Result<BTreeSet<String>, OmapackError> {
+fn directory_names(path: &Path) -> Result<BTreeSet<String>, QmlpackError> {
     if !path.exists() {
         return Ok(BTreeSet::new());
     }
@@ -436,7 +436,7 @@ fn directory_names(path: &Path) -> Result<BTreeSet<String>, OmapackError> {
         .map(|entry| {
             let entry = entry?;
             if !entry.file_type()?.is_dir() {
-                return Err(OmapackError(format!(
+                return Err(QmlpackError(format!(
                     "unexpected entry in {}",
                     path.display()
                 )));
@@ -444,22 +444,22 @@ fn directory_names(path: &Path) -> Result<BTreeSet<String>, OmapackError> {
             entry
                 .file_name()
                 .into_string()
-                .map_err(|_| OmapackError("non-UTF-8 package directory".into()))
+                .map_err(|_| QmlpackError("non-UTF-8 package directory".into()))
         })
         .collect()
 }
 
-fn regular_file_paths(root: &Path) -> Result<BTreeSet<String>, OmapackError> {
+fn regular_file_paths(root: &Path) -> Result<BTreeSet<String>, QmlpackError> {
     fn walk(
         root: &Path,
         current: &Path,
         output: &mut BTreeSet<String>,
-    ) -> Result<(), OmapackError> {
+    ) -> Result<(), QmlpackError> {
         for entry in fs::read_dir(current)? {
             let entry = entry?;
             let kind = entry.file_type()?;
             if kind.is_symlink() || (!kind.is_dir() && !kind.is_file()) {
-                return Err(OmapackError(format!(
+                return Err(QmlpackError(format!(
                     "unsafe installed entry: {}",
                     entry.path().display()
                 )));
@@ -470,7 +470,7 @@ fn regular_file_paths(root: &Path) -> Result<BTreeSet<String>, OmapackError> {
                 let relative = entry
                     .path()
                     .strip_prefix(root)
-                    .map_err(|error| OmapackError(error.to_string()))?
+                    .map_err(|error| QmlpackError(error.to_string()))?
                     .to_string_lossy()
                     .replace('\\', "/");
                 output.insert(relative);
@@ -483,12 +483,12 @@ fn regular_file_paths(root: &Path) -> Result<BTreeSet<String>, OmapackError> {
     Ok(output)
 }
 
-fn remove_tree_if_present(path: &Path) -> Result<(), OmapackError> {
+fn remove_tree_if_present(path: &Path) -> Result<(), QmlpackError> {
     match fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_dir() => {
             fs::remove_dir_all(path).map_err(Into::into)
         }
-        Ok(_) => Err(OmapackError(format!(
+        Ok(_) => Err(QmlpackError(format!(
             "refusing to remove non-directory {}",
             path.display()
         ))),
@@ -497,7 +497,7 @@ fn remove_tree_if_present(path: &Path) -> Result<(), OmapackError> {
     }
 }
 
-fn copy_if_present(source: &Path, destination: &Path) -> Result<(), OmapackError> {
+fn copy_if_present(source: &Path, destination: &Path) -> Result<(), QmlpackError> {
     match fs::copy(source, destination) {
         Ok(_) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -505,7 +505,7 @@ fn copy_if_present(source: &Path, destination: &Path) -> Result<(), OmapackError
     }
 }
 
-fn restore_or_remove(backup: &Path, destination: &Path) -> Result<(), OmapackError> {
+fn restore_or_remove(backup: &Path, destination: &Path) -> Result<(), QmlpackError> {
     if backup.exists() {
         fs::copy(backup, destination)?;
     } else if destination.exists() {
@@ -559,7 +559,7 @@ mod tests {
         initialize(root.path()).unwrap();
         let initial_review = prepare(root.path(), &project, &graph(b"first\n")).unwrap();
         assert!(initial_review.contains("+first"));
-        assert!(initial_review.contains(".omapack/candidate/vendor/omapack"));
+        assert!(initial_review.contains(".qmlpack/candidate/vendor/qmlpack"));
         assert!(!initial_review.contains("candidate-"));
         assert!(!root.path().join(VENDOR_DIR).exists());
         apply(root.path(), false).unwrap();

@@ -1,35 +1,36 @@
-# Omapack Package Format
+# Qmlpack Package Format
 
 Status: draft for the first implementation.
 
 ## Package identity
 
-A package is identified by its source repository and package path, not by a
-globally claimed short name:
+A package is identified by its transport-qualified source, not by a local
+dependency label:
 
 ```text
+npm:<scoped-or-unscoped-name>@<exact-version>
 github:<owner>/<repository>/<package-path>@<reference>
 ```
 
-The initial transport supports public GitHub repositories only. The resolver
-records GitHub's stable numeric repository ID so repository transfer and name
-reuse cannot silently change an existing identity.
+npm names are owned by the registry account or organization scope. GitHub
+identity combines its stable numeric repository ID and package path so a
+repository transfer is distinguishable from name reuse.
 
 Short names are local display names. A future curated index may supply aliases
 without becoming the source of package contents or release authority.
 
 ## Discovery and curation
 
-Schema version 1 requires fully qualified package sources and has no registry.
-Discovery can later be provided by any number of indexes: community-maintained,
-Omarchy-maintained, organization-specific, or private. An index may attach
-search metadata, review status, compatibility results, and aliases to an exact
-source identity. It must not redefine a package version or replace the
-repository, commit, and digest recorded by the consumer.
+Schema version 1 requires fully qualified package sources. npm provides
+discovery for packages published there; GitHub packages remain decentralized.
+Additional indexes may later attach search metadata, review status,
+compatibility results, and aliases to an exact source identity. They must not
+redefine a version or replace the transport identity and digest recorded by the
+consumer.
 
 ## Manifest
 
-Every package root contains `omapack.json`:
+Every package root contains `qmlpack.json`:
 
 ```json
 {
@@ -45,6 +46,7 @@ Every package root contains `omapack.json`:
     "bounded-read": "github:silouanwright/omatools/bounded-read@v0.1.0"
   },
   "compatibility": {
+    "qt": ">=6.8 <7",
     "omarchy": ">=4 <5",
     "quickshell": ">=0.3 <0.4"
   },
@@ -52,9 +54,10 @@ Every package root contains `omapack.json`:
 }
 ```
 
-`version` is deliberately absent. Released versions are package-prefixed
-SemVer Git tags, for example `oma-ui/v0.2.0`. Ordinary commits are valid
-development snapshots and are not assigned invented versions.
+`version` is deliberately absent. npm's `package.json` owns the version of an
+npm release. GitHub releases use package-prefixed SemVer tags, for example
+`oma-ui/v0.2.0`. Ordinary commits are valid development snapshots and are not
+assigned invented versions.
 
 ### Required fields
 
@@ -66,7 +69,10 @@ development snapshots and are not assigned invented versions.
 ### Optional fields
 
 - `dependencies`: local labels mapped to fully qualified, exact sources.
-- `compatibility`: declared host requirements.
+- `compatibility`: declared runtime and host requirements. A package listing
+  `quickshell` but not `omarchy` claims no Omarchy dependency. A package listing
+  both may use Omarchy-specific APIs or design primitives. Compatibility applies
+  to the whole package; it is not a per-file annotation system.
 - `executables`: a subset of `files` that must be installed with mode `0755`.
 
 Dependencies use exact releases or commits in schema version 1. Version ranges,
@@ -81,7 +87,7 @@ All paths are UTF-8 relative paths using `/`. A path must not:
 - contain NUL, control characters, or a backslash;
 - exceed 1,024 UTF-8 bytes in total or 255 UTF-8 bytes in one component;
 - collide with another path after Unicode NFC normalization and case folding;
-- name `.git`, `omapack.json`, `omapack.lock`, or Omapack's staging metadata;
+- name `.git`, `qmlpack.json`, `qmlpack.lock`, or Qmlpack's staging metadata;
 - resolve through a symbolic link or represent a submodule or special file.
 
 Schema version 1 limits:
@@ -101,24 +107,26 @@ configurable in a later schema only if real packages require it.
 
 ## Releases
 
-Each package owns an independent release stream. A package at `packages/oma-ui`
-uses tags like:
+Each package owns an independent release stream. An npm package publishes an
+immutable name/version pair. A GitHub package at `packages/oma-ui` uses tags
+like:
 
 ```text
 packages/oma-ui/v0.2.0
 ```
 
-Tags must never be moved or reused. Omapack encourages GitHub immutable
-releases, but consumers do not rely on tag immutability alone.
+Git tags must never be moved or reused. Qmlpack encourages GitHub immutable
+releases, but consumers do not rely on tag immutability alone. npm packages
+also contain `qmlpack.json`; Qmlpack never executes their lifecycle scripts.
 
 ## Canonical digest
 
 The package digest is SHA-256 over a versioned canonical byte stream. Begin
-with the exact bounded `omapack.json` bytes, then append every declared file
+with the exact bounded `qmlpack.json` bytes, then append every declared file
 sorted by its normalized UTF-8 path bytes:
 
 ```text
-omapack-package-v1\0
+qmlpack-package-v1\0
 <manifest-byte-length as 8-byte unsigned big endian>
 <exact manifest bytes>
 <path-byte-length as 8-byte unsigned big endian>
@@ -129,8 +137,8 @@ omapack-package-v1\0
 ```
 
 The prefix and manifest are emitted once before the first file. Line endings
-and all bytes are preserved. `omapack.json` must not also appear in `files`;
-Omapack stores its exact source bytes as package metadata rather than exposing
+and all bytes are preserved. `qmlpack.json` must not also appear in `files`;
+Qmlpack stores its exact source bytes as package metadata rather than exposing
 it as consumer-owned source.
 
 Canonical digest test vectors are required before schema version 1 is declared
@@ -138,24 +146,25 @@ stable.
 
 ## Project manifest
 
-The consuming plugin owns `omapack.json` at its repository root:
+The consuming plugin owns `qmlpack.json` at its repository root:
 
 ```json
 {
   "schemaVersion": 1,
   "profile": "omarchy",
   "dependencies": {
-    "oma-ui": "github:silouanwright/omatools/packages/oma-ui@v0.2.0"
+    "oma-ui": "npm:@silouanwright/oma-ui@0.2.0",
+    "experimental": "github:silouanwright/omatools/packages/oma-ui@<commit>"
   }
 }
 ```
 
-Dependency labels determine their directory under `vendor/omapack/`; they do
+Dependency labels determine their directory under `vendor/qmlpack/`; they do
 not replace canonical source identity.
 
 ## Lockfile
 
-`omapack.lock` is deterministic JSON and must be committed:
+`qmlpack.lock` is deterministic JSON and must be committed:
 
 ```json
 {
@@ -178,15 +187,17 @@ not replace canonical source identity.
 }
 ```
 
-Development commits have `version` and `tag` set to `null`. The exact commit
-and digest remain mandatory.
+An npm lock entry records registry URL, package name, exact version, tarball
+URL, registry integrity, and Qmlpack digest. A GitHub entry records repository
+ID, package path, requested reference, resolved commit, optional tag/version,
+and Qmlpack digest. Development commits have version and tag set to `null`.
 
 ## Installation ownership
 
-Omapack owns only `vendor/omapack/<dependency-label>/`. Installation stages a
+Qmlpack owns only `vendor/qmlpack/<dependency-label>/`. Installation stages a
 complete dependency tree in the consuming repository, validates it, and then
-atomically replaces Omapack-owned directories. The lockfile is written last.
+atomically replaces Qmlpack-owned directories. The lockfile is written last.
 
 An update refuses to replace a managed file whose current digest differs from
 the lockfile unless the user explicitly requests a forced replacement. Removal
-deletes only the recorded Omapack-owned directory and lock entry.
+deletes only the recorded Qmlpack-owned directory and lock entry.

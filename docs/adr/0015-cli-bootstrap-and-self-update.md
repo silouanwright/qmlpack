@@ -11,8 +11,8 @@ through package-provided code would make its trust boundary recursive.
 
 ## Decision
 
-Implement Omapack as a standalone Rust binary and distribute it separately from
-packages. Do not allow Omapack packages to install or update Omapack. The
+Implement Qmlpack as a standalone Rust binary and distribute it separately from
+packages. Do not allow Qmlpack packages to install or update Qmlpack. The
 initial repository documents pinned release binaries; a signed Arch/AUR or
 Omarchy-supported system package may follow when release demand exists.
 

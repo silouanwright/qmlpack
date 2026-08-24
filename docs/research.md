@@ -11,19 +11,20 @@ Omarchy 4.x adds a real plugin lifecycle and marketplace, but its schema version
 1 has no dependency field and rejects symbolic links anywhere in installed
 plugins. Consumers therefore need self-contained plugin repositories today.
 
-The nearest historical precedent is qpm, a now-dormant Qt/QML source package
-manager. qpm stored metadata centrally while source remained in author-owned
-repositories, created a project manifest, resolved nested dependencies, and
-vendored source. Omapack retains the source-package insight while avoiding a
-required central service and the build-system concerns of compiled Qt apps.
+The nearest historical precedent is qpm, an archived Qt/QML source package
+manager. qpm stored metadata in its own service while source remained in
+author-owned repositories, created a project manifest, resolved nested
+dependencies, and vendored source. Its service was later shut down. Qmlpack
+retains the source-package insight without operating registry infrastructure
+or inheriting the build-system concerns of compiled Qt applications.
 
 ## Product boundary
 
-Omarchy is the first product boundary because it supplies concrete plugin,
-theme, service, settings, validation, and installation contracts. Quickshell is
-the runtime beneath it, but standalone Quickshell shells do not share one host
-API or directory convention. The core package envelope remains portable; a
-general Quickshell claim waits for a real second consumer.
+QML modules are the reusable source boundary. A package may be portable Qt/QML,
+depend on Quickshell, or additionally depend on Omarchy APIs and design tokens.
+Omarchy is the first validated host because it supplies concrete plugin, theme,
+service, settings, validation, and installation contracts. Compatibility is
+declared per package rather than guessed from source or annotated per file.
 
 ## Compared systems
 
@@ -36,11 +37,13 @@ not require a binary artifact registry.
 
 ### npm
 
-The useful distinction is dependency intent versus an exact committed lock.
-Lifecycle scripts demonstrate a trust boundary Omapack deliberately avoids.
-npm can make `package.json` versions authoritative because publication reserves
-an immutable name/version pair in a central registry; a Git-only system cannot
-make that same claim from a mutable manifest alone.
+The useful distinctions are dependency intent versus an exact committed lock,
+scoped publisher namespaces, registry integrity, and immutable name/version
+pairs. npm accepts packages of computer code rather than requiring JavaScript
+entry points, making real QML modules suitable package contents under its
+acceptable-use policy. Lifecycle scripts demonstrate a trust boundary Qmlpack
+deliberately avoids: Qmlpack reads registry metadata and bounded tarballs
+directly and never invokes `npm install`.
 
 ### Cargo
 
@@ -61,14 +64,14 @@ not prerequisites for source identity.
 
 Workspaces are useful for developing multiple independently released packages
 in one repository. pnpm's content-addressed store and symlink/hardlink layout do
-not fit committed, symlink-free Omarchy plugins. No JavaScript monorepo runner
-is required for a small standard-library Python CLI and source packages.
+not fit committed, symlink-free Omarchy plugins. npm may publish the package
+artifacts without making npm or pnpm the QML materializer.
 
 ### Swift Package Manager and modern QML modules
 
 SwiftPM confirms that Git tags and exact revisions can coexist as dependency
 requirements. Qt's QML module system supplies namespaced runtime imports and
-tooling but not discovery or retrieval of author-owned source. Omapack should
+tooling but not discovery or retrieval of author-owned source. Qmlpack should
 distribute valid QML modules rather than inventing another runtime module
 format.
 
@@ -97,6 +100,8 @@ format.
 - [npm lockfiles](https://docs.npmjs.com/files/package-lock.json/)
 - [npm lifecycle scripts](https://docs.npmjs.com/cli/using-npm/scripts/)
 - [npm publish](https://docs.npmjs.com/cli/commands/npm-publish/)
+- [npm open-source terms](https://docs.npmjs.com/policies/open-source-terms/)
+- [npm unpublish and immutability policy](https://docs.npmjs.com/policies/unpublish/)
 - [Cargo registries](https://doc.rust-lang.org/cargo/reference/registries.html)
 - [Cargo resolver](https://doc.rust-lang.org/cargo/reference/resolver.html)
 - [Go module reference](https://go.dev/ref/mod)

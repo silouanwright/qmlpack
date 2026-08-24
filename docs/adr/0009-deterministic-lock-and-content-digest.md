@@ -5,7 +5,7 @@
 
 ## Context
 
-Git commit IDs identify repository history, not the package envelope Omapack
+Git commit IDs identify repository history, not the package envelope Qmlpack
 materializes. Tags may move, and future Git object formats may differ. A
 consumer needs to detect altered files, local modifications, and noncanonical
 materialization independently of Git.
@@ -24,7 +24,7 @@ lockfile are deterministic but are not themselves the package digest input.
 
 ## Consequences
 
-Omapack can prove that installed source matches the reviewed package envelope
+Qmlpack can prove that installed source matches the reviewed package envelope
 without treating a Git hash as the only integrity primitive. Any future digest
 change requires a new digest algorithm identifier or schema version rather
 than silently changing existing results.

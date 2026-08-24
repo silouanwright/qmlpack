@@ -1,11 +1,11 @@
 [package]
-name = "omapack"
+name = "qmlpack"
 version = "0.1.0-dev"
 edition = "2024"
 rust-version = "1.88"
 description = "Review-first source package management for Omarchy plugins"
 license = "MIT"
-repository = "https://github.com/silouanwright/omapack"
+repository = "https://github.com/silouanwright/qmlpack"
 
 [dependencies]
 base64 = "0.22"

@@ -1,12 +1,12 @@
 # Threat Model
 
-Omapack downloads source code that a consuming Omarchy plugin will commit and
+Qmlpack downloads source code that a consuming Omarchy plugin will commit and
 later execute inside a long-lived desktop shell. Package input is hostile until
 the developer has inspected and explicitly accepted it.
 
 ## Security claims
 
-Omapack is intended to provide:
+Qmlpack is intended to provide:
 
 - bounded retrieval and parsing of package metadata and files;
 - stable source identity and exact revision recording;
@@ -15,7 +15,7 @@ Omapack is intended to provide:
 - visible review of every installation and update;
 - detection of local modifications to managed files.
 
-Omapack does not claim that package code is safe, benevolent, correct, private,
+Qmlpack does not claim that package code is safe, benevolent, correct, private,
 or suitable for execution.
 
 ## Adversaries and failures
@@ -43,7 +43,7 @@ Schema version 1 does not clone repositories or extract archives. It resolves
 one GitHub reference to an exact commit, fetches a bounded package manifest,
 then fetches only explicitly declared files at that commit.
 
-Every response has a timeout and byte ceiling. Omapack rejects redirects to
+Every response has a timeout and byte ceiling. Qmlpack rejects redirects to
 unexpected hosts, truncated API trees, undeclared files, invalid content
 encodings, and responses that do not identify the requested revision.
 
@@ -65,7 +65,7 @@ the initial decentralized workflow.
 
 ## Code execution
 
-Omapack runs no package-provided install, update, build, or removal hooks.
+Qmlpack runs no package-provided install, update, build, or removal hooks.
 Executable files must be declared and are called out during review. Source is
 not loaded into Quickshell during retrieval or validation.
 
@@ -74,13 +74,13 @@ shell files, or invoke commands declared by a package.
 
 ## Installation and recovery
 
-All writes occur beneath a project-controlled `vendor/omapack` directory.
+All writes occur beneath a project-controlled `vendor/qmlpack` directory.
 Paths are revalidated at the filesystem boundary. Staging uses a sibling
 temporary directory on the same filesystem, and the old installation remains
 recoverable until the replacement is complete. The lockfile is written only
 after every package directory is in its final state.
 
-If installation cannot finish consistently, Omapack must stop and leave either
+If installation cannot finish consistently, Qmlpack must stop and leave either
 the previous complete installation or a clearly reported recoverable staging
 directory. It must never silently continue with a partially updated lockfile.
 

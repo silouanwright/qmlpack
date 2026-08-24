@@ -11,7 +11,7 @@ update. Individual file replacement makes ownership and rollback difficult.
 
 ## Decision
 
-Omapack exclusively owns `vendor/omapack/<dependency-label>/` and records every
+Qmlpack exclusively owns `vendor/qmlpack/<dependency-label>/` and records every
 managed file. Consumers customize packages outside that tree or intentionally
 fork them.
 

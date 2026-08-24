@@ -10,7 +10,7 @@ submodules, symbolic links, Git LFS metadata, and filesystem entries unrelated
 to the package a consumer requested. Archives add traversal, special-file,
 compression-ratio, entry-count, and extraction concerns.
 
-Omapack packages are expected to be small collections of source files. Fetching
+Qmlpack packages are expected to be small collections of source files. Fetching
 an entire repository or archive would create a larger security boundary than
 the product requires.
 

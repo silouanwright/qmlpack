@@ -1,4 +1,4 @@
-use crate::{MANIFEST_LIMIT, OmapackError, Source, strict_json};
+use crate::{MANIFEST_LIMIT, QmlpackError, Source, strict_json};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -17,29 +17,29 @@ pub struct ProjectManifest {
 }
 
 impl ProjectManifest {
-    pub fn parse(payload: &[u8]) -> Result<Self, OmapackError> {
+    pub fn parse(payload: &[u8]) -> Result<Self, QmlpackError> {
         let raw: RawProjectManifest = strict_json(payload, MANIFEST_LIMIT)?;
         if raw.schema_version != 1 {
-            return Err(OmapackError(
+            return Err(QmlpackError(
                 "project schemaVersion must be the integer 1".into(),
             ));
         }
         if raw.profile != "omarchy" {
-            return Err(OmapackError(
+            return Err(QmlpackError(
                 "schema version 1 supports only the omarchy profile".into(),
             ));
         }
         let mut dependencies = BTreeMap::new();
         for (label, source) in raw.dependencies {
             if !valid_label(&label) {
-                return Err(OmapackError(format!("invalid dependency label: {label:?}")));
+                return Err(QmlpackError(format!("invalid dependency label: {label:?}")));
             }
             dependencies.insert(label, Source::parse(&source)?);
         }
         Ok(Self { dependencies })
     }
 
-    pub fn to_json(&self) -> Result<Vec<u8>, OmapackError> {
+    pub fn to_json(&self) -> Result<Vec<u8>, QmlpackError> {
         let dependencies = self
             .dependencies
             .iter()
@@ -76,17 +76,17 @@ impl Lockfile {
         }
     }
 
-    pub fn parse(payload: &[u8]) -> Result<Self, OmapackError> {
+    pub fn parse(payload: &[u8]) -> Result<Self, QmlpackError> {
         let lock: Self = strict_json(payload, 4 * MANIFEST_LIMIT)?;
         if lock.schema_version != 1 {
-            return Err(OmapackError(
+            return Err(QmlpackError(
                 "lock schemaVersion must be the integer 1".into(),
             ));
         }
         Ok(lock)
     }
 
-    pub fn to_json(&self) -> Result<Vec<u8>, OmapackError> {
+    pub fn to_json(&self) -> Result<Vec<u8>, QmlpackError> {
         json_bytes(self)
     }
 }
@@ -106,9 +106,9 @@ pub struct LockedPackage {
     pub files: BTreeMap<String, String>,
 }
 
-pub fn json_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, OmapackError> {
+pub fn json_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, QmlpackError> {
     let mut bytes = serde_json::to_vec_pretty(value)
-        .map_err(|error| OmapackError(format!("cannot serialize JSON: {error}")))?;
+        .map_err(|error| QmlpackError(format!("cannot serialize JSON: {error}")))?;
     bytes.push(b'\n');
     Ok(bytes)
 }

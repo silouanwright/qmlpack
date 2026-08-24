@@ -1,15 +1,15 @@
 use clap::{Parser, Subcommand};
-use omapack::github::GitHubClient;
-use omapack::resolver::Resolver;
-use omapack::workspace;
-use omapack::{MANIFEST_LIMIT, OmapackError, PackageManifest, Source};
+use qmlpack::github::GitHubClient;
+use qmlpack::resolver::Resolver;
+use qmlpack::workspace;
+use qmlpack::{MANIFEST_LIMIT, PackageManifest, QmlpackError, Source};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(
-    name = "omapack",
+    name = "qmlpack",
     version,
     about = "Review-first source package management for Omarchy plugins"
 )]
@@ -44,28 +44,28 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
-    /// Verify installed source against omapack.lock.
+    /// Verify installed source against qmlpack.lock.
     Verify,
     /// Validate a package manifest.
     CheckManifest {
-        #[arg(default_value = "omapack.json")]
+        #[arg(default_value = "qmlpack.json")]
         path: PathBuf,
     },
     #[command(hide = true)]
     InspectSource { source: String },
 }
 
-fn run(cli: Cli) -> Result<(), OmapackError> {
+fn run(cli: Cli) -> Result<(), QmlpackError> {
     match cli.command {
         Command::Init => {
             workspace::initialize(&cli.project)?;
-            println!("Created {}", cli.project.join("omapack.json").display());
+            println!("Created {}", cli.project.join("qmlpack.json").display());
         }
         Command::Add { label, source } => {
             let mut project = workspace::read_project(&cli.project)?;
             if project.dependencies.contains_key(&label) {
-                return Err(OmapackError(format!(
-                    "{label} already exists; use omapack update"
+                return Err(QmlpackError(format!(
+                    "{label} already exists; use qmlpack update"
                 )));
             }
             project.dependencies.insert(label, Source::parse(&source)?);
@@ -76,7 +76,7 @@ fn run(cli: Cli) -> Result<(), OmapackError> {
             let old = project
                 .dependencies
                 .get(&label)
-                .ok_or_else(|| OmapackError(format!("unknown direct dependency: {label}")))?;
+                .ok_or_else(|| QmlpackError(format!("unknown direct dependency: {label}")))?;
             let path = if old.package_path.is_empty() {
                 String::new()
             } else {
@@ -92,23 +92,23 @@ fn run(cli: Cli) -> Result<(), OmapackError> {
         Command::Remove { label } => {
             let mut project = workspace::read_project(&cli.project)?;
             if project.dependencies.remove(&label).is_none() {
-                return Err(OmapackError(format!("unknown direct dependency: {label}")));
+                return Err(QmlpackError(format!("unknown direct dependency: {label}")));
             }
             prepare(&cli.project, &project)?;
         }
         Command::Diff => print!("{}", workspace::candidate_review(&cli.project)?),
         Command::Apply { force } => {
             workspace::apply(&cli.project, force)?;
-            println!("Applied reviewed Omapack candidate.");
+            println!("Applied reviewed Qmlpack candidate.");
         }
         Command::Verify => {
             workspace::verify(&cli.project)?;
-            println!("Installed packages match omapack.lock.");
+            println!("Installed packages match qmlpack.lock.");
         }
         Command::CheckManifest { path } => {
             let payload = fs::read(&path)?;
             if payload.len() > MANIFEST_LIMIT {
-                return Err(OmapackError(format!(
+                return Err(QmlpackError(format!(
                     "{} exceeds {MANIFEST_LIMIT} bytes",
                     path.display()
                 )));
@@ -128,20 +128,20 @@ fn run(cli: Cli) -> Result<(), OmapackError> {
 
 fn prepare(
     root: &std::path::Path,
-    project: &omapack::project::ProjectManifest,
-) -> Result<(), OmapackError> {
+    project: &qmlpack::project::ProjectManifest,
+) -> Result<(), QmlpackError> {
     let token = env::var("GITHUB_TOKEN").ok();
     let mut client = GitHubClient::new(token.as_deref())?;
     let graph = Resolver::new(&mut client).resolve(&project.dependencies)?;
     let review = workspace::prepare(root, project, &graph)?;
     print!("{review}");
-    println!("Review `.omapack/candidate/`, then run `omapack apply`.");
+    println!("Review `.qmlpack/candidate/`, then run `qmlpack apply`.");
     Ok(())
 }
 
 fn main() {
     if let Err(error) = run(Cli::parse()) {
-        eprintln!("omapack: {error}");
+        eprintln!("qmlpack: {error}");
         std::process::exit(1);
     }
 }

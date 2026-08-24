@@ -2,7 +2,7 @@
 
 - [0001: Omarchy-first, portable source model](0001-omarchy-first.md)
 - [0002: GitHub direct transport](0002-github-direct-transport.md)
-- [0003: Git tags own released versions](0003-tag-owned-versions.md)
+- [0003: Transport-owned released versions](0003-tag-owned-versions.md)
 - [0004: Review before mutation](0004-review-before-mutation.md)
 - [0005: Standalone Rust CLI](0005-standalone-rust-cli.md)
 - [0006: Decentralized base and host evolution](0006-decentralized-base-and-host-evolution.md)
@@ -16,3 +16,5 @@
 - [0014: Availability, cache, and mirrors](0014-availability-cache-and-mirrors.md)
 - [0015: CLI bootstrap and self-update](0015-cli-bootstrap-and-self-update.md)
 - [0016: Precedents and rejected scope](0016-precedents-and-rejected-scope.md)
+- [0017: npm releases and GitHub snapshots](0017-npm-releases-and-github-snapshots.md)
+- [0018: Qmlpack name and scope](0018-qmlpack-name-and-scope.md)

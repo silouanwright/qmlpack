@@ -1,6 +1,6 @@
 use crate::github::{GitHubClient, ResolvedPackage};
 use crate::project::{LockedPackage, Lockfile};
-use crate::{DEPENDENCY_DEPTH_LIMIT, OmapackError, PACKAGES_LIMIT, Source};
+use crate::{DEPENDENCY_DEPTH_LIMIT, PACKAGES_LIMIT, QmlpackError, Source};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub struct ResolvedGraph {
@@ -62,7 +62,7 @@ impl<'a> Resolver<'a> {
     pub fn resolve(
         mut self,
         dependencies: &BTreeMap<String, Source>,
-    ) -> Result<ResolvedGraph, OmapackError> {
+    ) -> Result<ResolvedGraph, QmlpackError> {
         for (label, source) in dependencies {
             self.resolve_one(label, source.clone(), 0)?;
         }
@@ -76,20 +76,20 @@ impl<'a> Resolver<'a> {
         label: &str,
         source: Source,
         depth: usize,
-    ) -> Result<(), OmapackError> {
+    ) -> Result<(), QmlpackError> {
         if depth > DEPENDENCY_DEPTH_LIMIT {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "dependency graph exceeds depth {DEPENDENCY_DEPTH_LIMIT}"
             )));
         }
         if self.packages.len() >= PACKAGES_LIMIT && !self.packages.contains_key(label) {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "dependency graph exceeds {PACKAGES_LIMIT} packages"
             )));
         }
         let source_key = source.canonical();
         if !self.active.insert(source_key.clone()) {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "dependency cycle through {source_key}"
             )));
         }
@@ -98,7 +98,7 @@ impl<'a> Resolver<'a> {
         let identity = (package.repository_id, package.source.package_path.clone());
         if let Some((existing_label, existing_commit)) = self.identities.get(&identity) {
             if existing_label != label || existing_commit != &package.commit {
-                return Err(OmapackError(format!(
+                return Err(QmlpackError(format!(
                     "package identity is requested inconsistently as {existing_label} and {label}"
                 )));
             }
@@ -106,7 +106,7 @@ impl<'a> Resolver<'a> {
             return Ok(());
         }
         if let Some(existing) = self.packages.get(label) {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "dependency label {label} refers to both {} and {}",
                 existing.source.canonical(),
                 package.source.canonical()

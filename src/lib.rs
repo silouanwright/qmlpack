@@ -22,17 +22,17 @@ pub const PACKAGES_LIMIT: usize = 128;
 pub const DEPENDENCY_DEPTH_LIMIT: usize = 16;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OmapackError(pub String);
+pub struct QmlpackError(pub String);
 
-impl fmt::Display for OmapackError {
+impl fmt::Display for QmlpackError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(&self.0)
     }
 }
 
-impl std::error::Error for OmapackError {}
+impl std::error::Error for QmlpackError {}
 
-impl From<std::io::Error> for OmapackError {
+impl From<std::io::Error> for QmlpackError {
     fn from(error: std::io::Error) -> Self {
         Self(error.to_string())
     }
@@ -111,18 +111,18 @@ impl<'de> de::DeserializeSeed<'de> for StrictValueSeed {
     }
 }
 
-pub fn strict_json<T: DeserializeOwned>(payload: &[u8], limit: usize) -> Result<T, OmapackError> {
+pub fn strict_json<T: DeserializeOwned>(payload: &[u8], limit: usize) -> Result<T, QmlpackError> {
     if payload.len() > limit {
-        return Err(OmapackError(format!("JSON exceeds {limit} bytes")));
+        return Err(QmlpackError(format!("JSON exceeds {limit} bytes")));
     }
     let mut deserializer = serde_json::Deserializer::from_slice(payload);
     let value = de::DeserializeSeed::deserialize(StrictValueSeed, &mut deserializer)
-        .map_err(|error| OmapackError(format!("invalid JSON: {error}")))?;
+        .map_err(|error| QmlpackError(format!("invalid JSON: {error}")))?;
     deserializer
         .end()
-        .map_err(|error| OmapackError(format!("invalid JSON: {error}")))?;
+        .map_err(|error| QmlpackError(format!("invalid JSON: {error}")))?;
     serde_json::from_value(value)
-        .map_err(|error| OmapackError(format!("invalid JSON shape: {error}")))
+        .map_err(|error| QmlpackError(format!("invalid JSON shape: {error}")))
 }
 
 fn valid_name(value: &str) -> bool {
@@ -134,7 +134,7 @@ fn valid_name(value: &str) -> bool {
         && !value.ends_with('-')
 }
 
-fn validate_path(value: &str, allow_manifest_name: bool) -> Result<String, OmapackError> {
+fn validate_path(value: &str, allow_manifest_name: bool) -> Result<String, QmlpackError> {
     if value.is_empty()
         || value.starts_with('/')
         || value.contains('\\')
@@ -142,7 +142,7 @@ fn validate_path(value: &str, allow_manifest_name: bool) -> Result<String, Omapa
         || value.len() > 1024
         || value.nfc().collect::<String>() != value
     {
-        return Err(OmapackError(format!("unsafe file path: {value:?}")));
+        return Err(QmlpackError(format!("unsafe file path: {value:?}")));
     }
     let components: Vec<_> = value.split('/').collect();
     if components.iter().any(|component| {
@@ -150,14 +150,14 @@ fn validate_path(value: &str, allow_manifest_name: bool) -> Result<String, Omapa
             || *component == "."
             || *component == ".."
             || *component == ".git"
-            || *component == ".omapack"
+            || *component == ".qmlpack"
             || component.len() > 255
     }) {
-        return Err(OmapackError(format!("unsafe file path: {value:?}")));
+        return Err(QmlpackError(format!("unsafe file path: {value:?}")));
     }
     let filename = components.last().expect("non-empty path");
-    if !allow_manifest_name && (*filename == "omapack.json" || *filename == "omapack.lock") {
-        return Err(OmapackError(format!("reserved file path: {value:?}")));
+    if !allow_manifest_name && (*filename == "qmlpack.json" || *filename == "qmlpack.lock") {
+        return Err(QmlpackError(format!("reserved file path: {value:?}")));
     }
     Ok(value.to_owned())
 }
@@ -171,19 +171,19 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn parse(value: &str) -> Result<Self, OmapackError> {
+    pub fn parse(value: &str) -> Result<Self, QmlpackError> {
         let remainder = value
             .strip_prefix("github:")
-            .ok_or_else(|| OmapackError("source must start with github:".into()))?;
+            .ok_or_else(|| QmlpackError("source must start with github:".into()))?;
         let (location, requested) = remainder
             .rsplit_once('@')
             .filter(|(_, requested)| !requested.is_empty())
-            .ok_or_else(|| OmapackError("source must end with @<version-or-commit>".into()))?;
+            .ok_or_else(|| QmlpackError("source must end with @<version-or-commit>".into()))?;
         let mut components = location.split('/');
         let owner = components.next().unwrap_or_default();
         let repository = components.next().unwrap_or_default();
         if !valid_repo_part(owner) || !valid_repo_part(repository) {
-            return Err(OmapackError("invalid GitHub owner or repository".into()));
+            return Err(QmlpackError("invalid GitHub owner or repository".into()));
         }
         let package_path = components.collect::<Vec<_>>().join("/");
         if !package_path.is_empty() {
@@ -194,7 +194,7 @@ impl Source {
         } else {
             let semantic = requested.strip_prefix('v').unwrap_or(requested);
             Version::parse(semantic).map_err(|_| {
-                OmapackError("reference must be an exact 40-character commit or SemVer".into())
+                QmlpackError("reference must be an exact 40-character commit or SemVer".into())
             })?;
             requested.to_owned()
         };
@@ -269,6 +269,7 @@ struct RawManifest {
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Compatibility {
+    qt: Option<String>,
     omarchy: Option<String>,
     quickshell: Option<String>,
 }
@@ -285,23 +286,23 @@ pub struct PackageManifest {
 }
 
 impl PackageManifest {
-    pub fn parse(payload: &[u8]) -> Result<Self, OmapackError> {
+    pub fn parse(payload: &[u8]) -> Result<Self, QmlpackError> {
         let raw: RawManifest = strict_json(payload, MANIFEST_LIMIT)?;
         if raw.schema_version != 1 {
-            return Err(OmapackError("schemaVersion must be the integer 1".into()));
+            return Err(QmlpackError("schemaVersion must be the integer 1".into()));
         }
         if !valid_name(&raw.name) {
-            return Err(OmapackError(
+            return Err(QmlpackError(
                 "name must use lowercase letters, digits, and internal hyphens".into(),
             ));
         }
         if raw.license.trim().is_empty() || raw.license.len() > 128 {
-            return Err(OmapackError(
+            return Err(QmlpackError(
                 "license must be a non-empty SPDX expression".into(),
             ));
         }
         if raw.files.is_empty() || raw.files.len() > FILES_LIMIT {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "files must contain 1 to {FILES_LIMIT} paths"
             )));
         }
@@ -311,32 +312,33 @@ impl PackageManifest {
             let path = validate_path(&path, false)?;
             let key = path.case_fold().collect::<String>();
             if let Some(previous) = folded.insert(key, path.clone()) {
-                return Err(OmapackError(format!(
+                return Err(QmlpackError(format!(
                     "file paths collide: {previous:?} and {path:?}"
                 )));
             }
             files.push(path);
         }
         if raw.dependencies.len() > DEPENDENCIES_LIMIT {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "packages may declare at most {DEPENDENCIES_LIMIT} dependencies"
             )));
         }
         let mut dependencies = BTreeMap::new();
         for (label, source) in raw.dependencies {
             if !valid_name(&label) {
-                return Err(OmapackError(format!("invalid dependency label: {label:?}")));
+                return Err(QmlpackError(format!("invalid dependency label: {label:?}")));
             }
             dependencies.insert(label, Source::parse(&source)?);
         }
         let mut compatibility = BTreeMap::new();
         for (host, requirement) in [
+            ("qt", raw.compatibility.qt),
             ("omarchy", raw.compatibility.omarchy),
             ("quickshell", raw.compatibility.quickshell),
         ] {
             if let Some(requirement) = requirement {
                 if requirement.trim().is_empty() || requirement.len() > 128 {
-                    return Err(OmapackError(format!(
+                    return Err(QmlpackError(format!(
                         "compatibility.{host} must be a non-empty string"
                     )));
                 }
@@ -347,7 +349,7 @@ impl PackageManifest {
         for path in raw.executables {
             let path = validate_path(&path, false)?;
             if !files.contains(&path) {
-                return Err(OmapackError(
+                return Err(QmlpackError(
                     "every executable must also appear in files".into(),
                 ));
             }
@@ -385,22 +387,22 @@ impl PackageFile {
 pub fn package_digest(
     manifest: &PackageManifest,
     files: &[PackageFile],
-) -> Result<String, OmapackError> {
+) -> Result<String, QmlpackError> {
     let by_path: BTreeMap<_, _> = files
         .iter()
         .map(|file| (file.path.as_str(), file))
         .collect();
     if by_path.len() != files.len() || by_path.len() != manifest.files.len() {
-        return Err(OmapackError("package files do not match manifest".into()));
+        return Err(QmlpackError("package files do not match manifest".into()));
     }
     let total: usize = files.iter().map(|file| file.content.len()).sum();
     if total > PACKAGE_LIMIT {
-        return Err(OmapackError(format!(
+        return Err(QmlpackError(format!(
             "package exceeds {PACKAGE_LIMIT} bytes"
         )));
     }
     let mut digest = Sha256::new();
-    digest.update(b"omapack-package-v1\0");
+    digest.update(b"qmlpack-package-v1\0");
     digest.update((manifest.raw.len() as u64).to_be_bytes());
     digest.update(&manifest.raw);
     let mut paths = manifest.files.iter().collect::<Vec<_>>();
@@ -408,14 +410,14 @@ pub fn package_digest(
     for path in paths {
         let file = by_path
             .get(path.as_str())
-            .ok_or_else(|| OmapackError(format!("missing package file: {path}")))?;
+            .ok_or_else(|| QmlpackError(format!("missing package file: {path}")))?;
         if file.content.len() > FILE_LIMIT {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "file exceeds {FILE_LIMIT} bytes: {path}"
             )));
         }
         if file.executable != manifest.executables.contains(path) {
-            return Err(OmapackError(format!(
+            return Err(QmlpackError(format!(
                 "file mode does not match manifest: {path}"
             )));
         }
@@ -474,7 +476,7 @@ mod tests {
         let unicode_collision = r#"{"schemaVersion":1,"name":"x","license":"MIT","files":["Ui/Straße.qml","Ui/STRASSE.qml"]}"#;
         assert!(PackageManifest::parse(unicode_collision.as_bytes()).is_err());
         let reserved =
-            br#"{"schemaVersion":1,"name":"x","license":"MIT","files":["omapack.json"]}"#;
+            br#"{"schemaVersion":1,"name":"x","license":"MIT","files":["qmlpack.json"]}"#;
         assert!(PackageManifest::parse(reserved).is_err());
     }
 
@@ -495,7 +497,7 @@ mod tests {
         ];
         assert_eq!(
             package_digest(&manifest, &files).unwrap(),
-            "sha256:c4cdce50e1a09b2f3406e98bc226c0f237bc6b6c5d1b1dd4d584a134d73c146f"
+            "sha256:e174cb84faca8c982dc245397881c1491ed488792eacd5ebf6744d87e9fad7f3"
         );
         let mut reversed = files.clone();
         reversed.reverse();

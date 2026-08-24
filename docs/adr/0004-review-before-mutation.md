@@ -11,7 +11,7 @@ can perform harmful actions while matching their published digest exactly.
 ## Decision
 
 Package additions and updates prepare reviewable candidates and require a
-separate explicit application step. Omapack performs no automatic updates and
+separate explicit application step. Qmlpack performs no automatic updates and
 runs no package-provided lifecycle hooks. Human or AI-assisted review is
 encouraged without being represented as certification.
 
