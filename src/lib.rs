@@ -8,6 +8,8 @@ use std::fmt;
 use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
 
+pub mod github;
+
 pub const MANIFEST_LIMIT: usize = 64 * 1024;
 pub const FILE_LIMIT: usize = 4 * 1024 * 1024;
 pub const PACKAGE_LIMIT: usize = 16 * 1024 * 1024;
