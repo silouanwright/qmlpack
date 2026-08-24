@@ -11,6 +11,7 @@ use unicode_normalization::UnicodeNormalization;
 pub mod github;
 pub mod project;
 pub mod resolver;
+pub mod workspace;
 
 pub const MANIFEST_LIMIT: usize = 64 * 1024;
 pub const FILE_LIMIT: usize = 4 * 1024 * 1024;
