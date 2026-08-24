@@ -79,6 +79,7 @@ All paths are UTF-8 relative paths using `/`. A path must not:
 
 - be absolute, empty, or contain an empty, `.` or `..` component;
 - contain NUL, control characters, or a backslash;
+- exceed 1,024 UTF-8 bytes in total or 255 UTF-8 bytes in one component;
 - collide with another path after Unicode NFC normalization and case folding;
 - name `.git`, `omapack.json`, `omapack.lock`, or Omapack's staging metadata;
 - resolve through a symbolic link or represent a submodule or special file.
