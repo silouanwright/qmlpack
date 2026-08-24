@@ -1,6 +1,7 @@
 use crate::project::{Lockfile, ProjectManifest};
 use crate::resolver::ResolvedGraph;
 use crate::{MANIFEST_LIMIT, OmapackError, PackageFile, PackageManifest, package_digest};
+use similar::TextDiff;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -85,7 +86,12 @@ pub fn prepare(
         0o644,
     )?;
     atomic_write(&temporary_root.join(LOCK_FILE), &lock.to_json()?, 0o644)?;
-    let review = review_markdown(root, &lock, &vendor)?;
+    let review = review_markdown(
+        root,
+        &lock,
+        &vendor,
+        &state.join(CANDIDATE_DIR).join(VENDOR_DIR),
+    )?;
     atomic_write(&temporary_root.join("review.md"), review.as_bytes(), 0o644)?;
 
     let candidate = state.join(CANDIDATE_DIR);
@@ -249,6 +255,7 @@ fn review_markdown(
     root: &Path,
     lock: &Lockfile,
     candidate_vendor: &Path,
+    displayed_vendor: &Path,
 ) -> Result<String, OmapackError> {
     let previous = read_lock(root)?.unwrap_or_else(Lockfile::empty);
     let mut output = String::from(
@@ -279,11 +286,83 @@ fn review_markdown(
     {
         output.push_str(&format!("## {label} (removed)\n\n"));
     }
+    append_source_diffs(&mut output, &root.join(VENDOR_DIR), candidate_vendor, lock)?;
     output.push_str(&format!(
         "Candidate source: `{}`\n",
-        candidate_vendor.display()
+        displayed_vendor.display()
     ));
     Ok(output)
+}
+
+fn append_source_diffs(
+    output: &mut String,
+    installed: &Path,
+    candidate: &Path,
+    lock: &Lockfile,
+) -> Result<(), OmapackError> {
+    const TEXT_FILE_LIMIT: usize = 256 * 1024;
+    const REVIEW_LIMIT: usize = 2 * 1024 * 1024;
+    output.push_str("# Source changes\n\n");
+    let previous = read_lock(
+        installed
+            .parent()
+            .and_then(Path::parent)
+            .unwrap_or(installed),
+    )?
+    .unwrap_or_else(Lockfile::empty);
+    let labels: BTreeSet<_> = previous
+        .packages
+        .keys()
+        .chain(lock.packages.keys())
+        .cloned()
+        .collect();
+    for label in labels {
+        let old_files = previous
+            .packages
+            .get(&label)
+            .map(|package| package.files.keys().cloned().collect::<BTreeSet<_>>())
+            .unwrap_or_default();
+        let new_files = lock
+            .packages
+            .get(&label)
+            .map(|package| package.files.keys().cloned().collect::<BTreeSet<_>>())
+            .unwrap_or_default();
+        for path in old_files.union(&new_files) {
+            let old = fs::read(installed.join(&label).join(path)).unwrap_or_default();
+            let new = fs::read(candidate.join(&label).join(path)).unwrap_or_default();
+            if old == new {
+                continue;
+            }
+            output.push_str(&format!("## `{label}/{path}`\n\n"));
+            match (
+                old.len() <= TEXT_FILE_LIMIT,
+                new.len() <= TEXT_FILE_LIMIT,
+                std::str::from_utf8(&old),
+                std::str::from_utf8(&new),
+            ) {
+                (true, true, Ok(old_text), Ok(new_text)) => {
+                    let diff = TextDiff::from_lines(old_text, new_text)
+                        .unified_diff()
+                        .context_radius(3)
+                        .header(&format!("a/{label}/{path}"), &format!("b/{label}/{path}"))
+                        .to_string();
+                    output.push_str("```diff\n");
+                    output.push_str(&diff);
+                    output.push_str("```\n\n");
+                }
+                _ => output
+                    .push_str("Binary or large file changed; inspect the candidate directly.\n\n"),
+            }
+            if output.len() > REVIEW_LIMIT {
+                output.truncate(REVIEW_LIMIT);
+                output.push_str(
+                    "\n\nReview truncated at 2 MiB; inspect the candidate directory directly.\n\n",
+                );
+                return Ok(());
+            }
+        }
+    }
+    Ok(())
 }
 
 fn write_package_file(root: &Path, file: &PackageFile) -> Result<(), OmapackError> {
@@ -478,7 +557,10 @@ mod tests {
             )]),
         };
         initialize(root.path()).unwrap();
-        prepare(root.path(), &project, &graph(b"first\n")).unwrap();
+        let initial_review = prepare(root.path(), &project, &graph(b"first\n")).unwrap();
+        assert!(initial_review.contains("+first"));
+        assert!(initial_review.contains(".omapack/candidate/vendor/omapack"));
+        assert!(!initial_review.contains("candidate-"));
         assert!(!root.path().join(VENDOR_DIR).exists());
         apply(root.path(), false).unwrap();
         verify(root.path()).unwrap();
@@ -489,7 +571,9 @@ mod tests {
         )
         .unwrap();
         assert!(verify(root.path()).is_err());
-        prepare(root.path(), &project, &graph(b"second\n")).unwrap();
+        let update_review = prepare(root.path(), &project, &graph(b"second\n")).unwrap();
+        assert!(update_review.contains("-local edit"));
+        assert!(update_review.contains("+second"));
         assert!(apply(root.path(), false).is_err());
         apply(root.path(), true).unwrap();
         verify(root.path()).unwrap();
