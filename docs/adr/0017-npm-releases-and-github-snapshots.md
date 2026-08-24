@@ -44,6 +44,25 @@ QML/Quickshell/host compatibility declaration and explicit source envelope.
 GitHub commits remain useful for development snapshots without invented
 versions.
 
+## Selection policy
+
+Prefer npm for stable reusable package releases because it provides immutable
+scoped name/version pairs, registry integrity, discovery, and artifact delivery
+without GitHub API rate limits. Prefer GitHub for exact development snapshots,
+unreleased or experimental packages, and authors who do not want a registry
+publishing step.
+
+Complete Omarchy plugins continue to publish as Git repositories because that
+is the Omarchy installation and marketplace contract. Their Qmlpack
+dependencies may independently use npm releases or GitHub snapshots.
+
+Authors may expose the same project through both services: GitHub remains the
+reviewable source history while npm carries the canonical stable artifact.
+Qmlpack does not consider those locations interchangeable. It records the
+requested transport in the lockfile and never silently falls back from npm to
+GitHub or from GitHub to npm, even when metadata links them to the same project.
+Changing transports is an explicit dependency update with a complete review.
+
 ## Consequences
 
 Qmlpack does not operate registry infrastructure and users do not need Node or

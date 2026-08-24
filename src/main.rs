@@ -11,7 +11,7 @@ use std::path::PathBuf;
 #[command(
     name = "qmlpack",
     version,
-    about = "Review-first source package management for Omarchy plugins"
+    about = "Review-first source package management for QML projects"
 )]
 struct Cli {
     /// Plugin project directory.
@@ -24,7 +24,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Create an empty Omarchy project manifest.
+    /// Create an empty Qmlpack project manifest.
     Init,
     /// Prepare a package addition for review without changing the project.
     Add { label: String, source: String },

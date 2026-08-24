@@ -19,11 +19,13 @@ a security guarantee.
 Qmlpack is under active development and is not affiliated with Qt, Quickshell,
 npm, or Omarchy. Its first supported host profile is Omarchy 4.x. Portable QML
 and Quickshell packages use the same source envelope without claiming support
-for every standalone shell's integration conventions.
+for every standalone shell's integration conventions. The bounded GitHub
+transport is implemented; npm release transport is the next transport milestone.
 
 ## Design
 
-- npm is the preferred release registry; exact GitHub sources remain supported.
+- npm is the preferred release registry in the accepted design; exact GitHub
+  sources are already supported and remain first-class.
 - Packages declare an explicit, bounded list of files.
 - npm releases use immutable scoped name/version pairs; GitHub packages may use
   exact commits or package-prefixed SemVer tags.
@@ -56,7 +58,7 @@ The normative contracts live in:
 
 ```bash
 qmlpack init
-qmlpack add oma-ui npm:@silouanwright/oma-ui@0.1.0
+qmlpack add oma-ui github:silouanwright/omatools/packages/oma-ui@0.2.0
 qmlpack diff oma-ui
 qmlpack apply
 qmlpack verify
