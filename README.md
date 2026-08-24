@@ -29,6 +29,18 @@ Quickshell support is not yet promised.
 - Adds and updates stop for inspection before changing the working tree.
 - There are no install hooks or automatic updates.
 
+The initial ecosystem is decentralized: authors publish from their own GitHub
+repositories and consumers use fully qualified sources. If adoption warrants
+it, searchable or curated indexes can be layered on top without becoming the
+authority for package contents.
+
+Committed vendoring is also a compatibility strategy for Omarchy's current
+plugin contract, not an assumption that must last forever. If
+`omarchy plugin add` later installs declared dependencies itself, Omapack can
+resolve and lock packages for the host installer instead of committing their
+source into each plugin. Existing manifests and lockfiles remain useful in
+either model.
+
 The normative contracts live in:
 
 - [Package specification](docs/package-format.md)

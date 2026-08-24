@@ -20,8 +20,19 @@ demonstrates the required adapter boundary.
 Plugins commit vendored dependencies and remain installable through the normal
 Omarchy plugin workflow without requiring Omapack on end-user machines.
 
+Committed vendoring is an adapter for the current host contract. If a future
+Omarchy plugin manifest gains dependencies and `omarchy plugin add` installs
+them, Omapack may emit the same resolved graph and lock data for that native
+installer rather than materializing `vendor/omapack` in the source repository.
+Package identities and manifests must therefore avoid depending on their
+current vendored destination.
+
 ## Consequences
 
 The initial product has a clear host contract and can validate the completed
 plugin with `omarchy plugin validate`. A future Quickshell profile can reuse
 the transport and lock model, but speculative profile interfaces are deferred.
+
+Likewise, optional curated indexes can be layered over fully qualified sources
+without changing publication or integrity authority. Curation is deferred
+until package volume makes discovery or shared review materially useful.

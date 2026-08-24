@@ -18,6 +18,15 @@ reuse cannot silently change an existing identity.
 Short names are local display names. A future curated index may supply aliases
 without becoming the source of package contents or release authority.
 
+## Discovery and curation
+
+Schema version 1 requires fully qualified package sources and has no registry.
+Discovery can later be provided by any number of indexes: community-maintained,
+Omarchy-maintained, organization-specific, or private. An index may attach
+search metadata, review status, compatibility results, and aliases to an exact
+source identity. It must not redefine a package version or replace the
+repository, commit, and digest recorded by the consumer.
+
 ## Manifest
 
 Every package root contains `omapack.json`:

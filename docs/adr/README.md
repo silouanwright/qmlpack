@@ -5,3 +5,4 @@
 - [0003: Git tags own released versions](0003-tag-owned-versions.md)
 - [0004: Review before mutation](0004-review-before-mutation.md)
 - [0005: Python standard-library CLI](0005-python-stdlib-cli.md)
+- [0006: Decentralized base and host evolution](0006-decentralized-base-and-host-evolution.md)
