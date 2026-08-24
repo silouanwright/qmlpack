@@ -171,13 +171,17 @@ not replace canonical source identity.
   "schemaVersion": 1,
   "packages": {
     "oma-ui": {
-      "source": "github:silouanwright/omatools",
-      "repositoryId": 123456789,
-      "packagePath": "packages/oma-ui",
-      "requested": "v0.2.0",
-      "version": "0.2.0",
-      "tag": "packages/oma-ui/v0.2.0",
-      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "source": "github:silouanwright/omatools/packages/oma-ui@0.2.0",
+      "resolution": {
+        "transport": "github",
+        "repository_id": 123456789,
+        "repository_name": "silouanwright/omatools",
+        "package_path": "packages/oma-ui",
+        "requested": "0.2.0",
+        "version": "0.2.0",
+        "tag": "packages/oma-ui/v0.2.0",
+        "commit": "0123456789abcdef0123456789abcdef01234567"
+      },
       "digest": "sha256:...",
       "files": {
         "Ui/Button.qml": "sha256:..."
@@ -187,8 +191,8 @@ not replace canonical source identity.
 }
 ```
 
-An npm lock entry records registry URL, package name, exact version, tarball
-URL, registry integrity, and Qmlpack digest. A GitHub entry records repository
+An npm lock entry records registry URL, package name, exact version, registry
+integrity, and Qmlpack digest. A GitHub entry records repository
 ID, package path, requested reference, resolved commit, optional tag/version,
 and Qmlpack digest. Development commits have version and tag set to `null`.
 
@@ -201,3 +205,10 @@ atomically replaces Qmlpack-owned directories. The lockfile is written last.
 An update refuses to replace a managed file whose current digest differs from
 the lockfile unless the user explicitly requests a forced replacement. Removal
 deletes only the recorded Qmlpack-owned directory and lock entry.
+
+## Release validation
+
+`qmlpack release-check <package-directory>` validates the manifest, declared
+regular files, byte ceilings, and executable modes before an author creates a
+GitHub tag or runs `npm publish`. Publishing stays transport-owned; Qmlpack does
+not hold registry credentials or run release hooks.

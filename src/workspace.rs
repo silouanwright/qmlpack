@@ -1,10 +1,11 @@
-use crate::project::{Lockfile, ProjectManifest};
+use crate::project::{LockedResolution, Lockfile, ProjectManifest};
 use crate::resolver::ResolvedGraph;
 use crate::{MANIFEST_LIMIT, PackageFile, PackageManifest, QmlpackError, package_digest};
 use similar::TextDiff;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
+use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use tempfile::Builder;
@@ -15,7 +16,12 @@ const STATE_DIR: &str = ".qmlpack";
 const CANDIDATE_DIR: &str = "candidate";
 const VENDOR_DIR: &str = "vendor/qmlpack";
 
-pub fn initialize(root: &Path) -> Result<(), QmlpackError> {
+pub fn initialize(root: &Path, profile: &str) -> Result<(), QmlpackError> {
+    if !matches!(profile, "qml" | "quickshell" | "omarchy") {
+        return Err(QmlpackError(
+            "profile must be qml, quickshell, or omarchy".into(),
+        ));
+    }
     fs::create_dir_all(root)?;
     let path = root.join(PROJECT_FILE);
     let mut file = OpenOptions::new()
@@ -31,6 +37,7 @@ pub fn initialize(root: &Path) -> Result<(), QmlpackError> {
         })?;
     file.write_all(
         &ProjectManifest {
+            profile: profile.into(),
             dependencies: BTreeMap::new(),
         }
         .to_json()?,
@@ -47,12 +54,34 @@ pub fn read_project(root: &Path) -> Result<ProjectManifest, QmlpackError> {
 
 pub fn read_lock(root: &Path) -> Result<Option<Lockfile>, QmlpackError> {
     let path = root.join(LOCK_FILE);
-    match fs::read(&path) {
-        Ok(bytes) if bytes.len() <= 4 * MANIFEST_LIMIT => Lockfile::parse(&bytes).map(Some),
-        Ok(_) => Err(QmlpackError(format!("{} is too large", path.display()))),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error.into()),
+    match fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.into()),
+        Ok(_) => {}
     }
+    Lockfile::parse(&read_bounded(&path, 4 * MANIFEST_LIMIT)?).map(Some)
+}
+
+pub fn release_check(root: &Path) -> Result<PackageManifest, QmlpackError> {
+    let manifest =
+        PackageManifest::parse(&read_bounded(&root.join(PROJECT_FILE), MANIFEST_LIMIT)?)?;
+    for path in &manifest.files {
+        let source = root.join(path);
+        let metadata = fs::symlink_metadata(&source)?;
+        if !metadata.file_type().is_file() {
+            return Err(QmlpackError(format!(
+                "declared package file is not a regular file: {path}"
+            )));
+        }
+        let executable = metadata.permissions().mode() & 0o111 != 0;
+        if executable != manifest.executables.contains(path) {
+            return Err(QmlpackError(format!(
+                "declared executable mode does not match the file: {path}"
+            )));
+        }
+        read_bounded(&source, crate::FILE_LIMIT)?;
+    }
+    Ok(manifest)
 }
 
 pub fn prepare(
@@ -88,6 +117,8 @@ pub fn prepare(
     atomic_write(&temporary_root.join(LOCK_FILE), &lock.to_json()?, 0o644)?;
     let review = review_markdown(
         root,
+        project,
+        graph,
         &lock,
         &vendor,
         &state.join(CANDIDATE_DIR).join(VENDOR_DIR),
@@ -111,8 +142,9 @@ pub fn prepare(
 }
 
 pub fn candidate_review(root: &Path) -> Result<String, QmlpackError> {
-    fs::read_to_string(root.join(STATE_DIR).join(CANDIDATE_DIR).join("review.md"))
-        .map_err(|error| QmlpackError(format!("no prepared candidate: {error}")))
+    let path = root.join(STATE_DIR).join(CANDIDATE_DIR).join("review.md");
+    String::from_utf8(read_bounded(&path, 2 * 1024 * 1024)?)
+        .map_err(|error| QmlpackError(format!("candidate review is not UTF-8: {error}")))
 }
 
 pub fn apply(root: &Path, force: bool) -> Result<(), QmlpackError> {
@@ -206,7 +238,7 @@ fn verify_tree(vendor: &Path, lock: &Lockfile) -> Result<(), QmlpackError> {
         }
         let mut files = Vec::new();
         for path in &manifest.files {
-            let content = fs::read(package_root.join(path))?;
+            let content = read_bounded(&package_root.join(path), crate::FILE_LIMIT)?;
             let file = PackageFile {
                 path: path.clone(),
                 content,
@@ -253,6 +285,8 @@ pub fn recover(root: &Path) -> Result<(), QmlpackError> {
 
 fn review_markdown(
     root: &Path,
+    project: &ProjectManifest,
+    graph: &ResolvedGraph,
     lock: &Lockfile,
     candidate_vendor: &Path,
     displayed_vendor: &Path,
@@ -267,11 +301,51 @@ fn review_markdown(
             Some(old) if old.digest == package.digest => "unchanged",
             Some(_) => "updated",
         };
+        let directness = if project.dependencies.contains_key(label) {
+            "direct"
+        } else {
+            "transitive"
+        };
         output.push_str(&format!(
-            "## {label} ({status})\n\n- Source: `{}`\n- Commit: `{}`\n- Digest: `{}`\n- Files: {}\n\n",
-            package.source,
-            package.commit,
-            package.digest,
+            "## {label} ({status}, {directness})\n\n- Source: `{}`\n",
+            package.source
+        ));
+        match &package.resolution {
+            LockedResolution::Github {
+                requested,
+                tag,
+                commit,
+                ..
+            } => output.push_str(&format!(
+                "- Requested: `{requested}`\n- Tag: `{}`\n- Commit: `{commit}`\n",
+                tag.as_deref().unwrap_or("none")
+            )),
+            LockedResolution::Npm {
+                version, integrity, ..
+            } => output.push_str(&format!(
+                "- Version: `{version}`\n- Registry integrity: `{integrity}`\n"
+            )),
+        }
+        output.push_str(&format!("- Digest: `{}`\n", package.digest));
+        let resolved = graph
+            .packages
+            .get(label)
+            .ok_or_else(|| QmlpackError(format!("resolved graph is missing package {label}")))?;
+        output.push_str(&format!("- License: `{}`\n", resolved.manifest.license));
+        if !resolved.manifest.compatibility.is_empty() {
+            let compatibility = resolved
+                .manifest
+                .compatibility
+                .iter()
+                .map(|(host, requirement)| format!("{host} {requirement}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            output.push_str(&format!("- Compatibility: `{compatibility}`\n"));
+        }
+        output.push_str(&format!(
+            "- Dependencies: {}\n- Executables: {}\n- Files: {}\n\n",
+            resolved.manifest.dependencies.len(),
+            resolved.manifest.executables.len(),
             package.files.len()
         ));
         for path in package.files.keys() {
@@ -393,6 +467,7 @@ fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> Result<(), QmlpackError
     temporary
         .persist(path)
         .map_err(|error| QmlpackError(error.error.to_string()))?;
+    fs::File::open(parent)?.sync_all()?;
     Ok(())
 }
 
@@ -411,14 +486,19 @@ fn ensure_real_directory(path: &Path) -> Result<(), QmlpackError> {
 }
 
 fn read_bounded(path: &Path, limit: usize) -> Result<Vec<u8>, QmlpackError> {
-    let metadata = fs::symlink_metadata(path)?;
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(path)?;
+    let metadata = file.metadata()?;
     if !metadata.file_type().is_file() || metadata.len() > limit as u64 {
         return Err(QmlpackError(format!(
             "{} is not a bounded regular file",
             path.display()
         )));
     }
-    let bytes = fs::read(path)?;
+    let mut bytes = Vec::with_capacity(metadata.len() as usize);
+    file.take(limit as u64 + 1).read_to_end(&mut bytes)?;
     if bytes.len() > limit {
         return Err(QmlpackError(format!(
             "{} exceeds {limit} bytes",
@@ -517,9 +597,9 @@ fn restore_or_remove(backup: &Path, destination: &Path) -> Result<(), QmlpackErr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Source;
-    use crate::github::ResolvedPackage;
     use crate::resolver::ResolvedGraph;
+    use crate::{Resolution, ResolvedPackage, Source};
+    use std::os::unix::fs::symlink;
 
     fn graph(content: &[u8]) -> ResolvedGraph {
         let raw =
@@ -536,9 +616,15 @@ mod tests {
                 "oma-ui".into(),
                 ResolvedPackage {
                     source: Source::parse("github:silouanwright/omatools/oma-ui@1.0.0").unwrap(),
-                    repository_id: 42,
-                    repository_name: "silouanwright/omatools".into(),
-                    commit: "a".repeat(40),
+                    resolution: Resolution::GitHub {
+                        repository_id: 42,
+                        repository_name: "silouanwright/omatools".into(),
+                        package_path: "oma-ui".into(),
+                        requested: "1.0.0".into(),
+                        version: Some("1.0.0".into()),
+                        tag: Some("oma-ui/v1.0.0".into()),
+                        commit: "a".repeat(40),
+                    },
                     manifest,
                     files,
                     digest,
@@ -551,12 +637,13 @@ mod tests {
     fn prepare_apply_verify_and_modified_file_guard() {
         let root = tempfile::tempdir().unwrap();
         let project = ProjectManifest {
+            profile: "omarchy".into(),
             dependencies: BTreeMap::from([(
                 "oma-ui".into(),
                 Source::parse("github:silouanwright/omatools/oma-ui@1.0.0").unwrap(),
             )]),
         };
-        initialize(root.path()).unwrap();
+        initialize(root.path(), "omarchy").unwrap();
         let initial_review = prepare(root.path(), &project, &graph(b"first\n")).unwrap();
         assert!(initial_review.contains("+first"));
         assert!(initial_review.contains(".qmlpack/candidate/vendor/qmlpack"));
@@ -577,5 +664,58 @@ mod tests {
         assert!(apply(root.path(), false).is_err());
         apply(root.path(), true).unwrap();
         verify(root.path()).unwrap();
+    }
+
+    #[test]
+    fn release_check_rejects_undeclared_executable_mode() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(
+            root.path().join(PROJECT_FILE),
+            br#"{"schemaVersion":1,"name":"sample","license":"MIT","files":["tool"]}"#,
+        )
+        .unwrap();
+        fs::write(root.path().join("tool"), b"#!/bin/sh\n").unwrap();
+        fs::set_permissions(root.path().join("tool"), fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(release_check(root.path()).is_err());
+    }
+
+    #[test]
+    fn bounded_reads_reject_symlinks_and_recovery_restores_backup() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(
+            root.path().join("real-lock"),
+            Lockfile::empty().to_json().unwrap(),
+        )
+        .unwrap();
+        symlink("real-lock", root.path().join(LOCK_FILE)).unwrap();
+        assert!(read_lock(root.path()).is_err());
+
+        fs::remove_file(root.path().join(LOCK_FILE)).unwrap();
+        fs::create_dir_all(root.path().join(VENDOR_DIR)).unwrap();
+        fs::write(root.path().join(VENDOR_DIR).join("partial"), b"partial").unwrap();
+        let backup = root.path().join(STATE_DIR).join("transaction-backup");
+        fs::create_dir_all(backup.join("vendor/package")).unwrap();
+        fs::write(backup.join("vendor/package/restored"), b"restored").unwrap();
+        fs::write(backup.join(PROJECT_FILE), b"project").unwrap();
+        fs::write(backup.join(LOCK_FILE), b"lock").unwrap();
+        fs::write(root.path().join(STATE_DIR).join("transaction.json"), b"{}").unwrap();
+
+        recover(root.path()).unwrap();
+        assert_eq!(
+            fs::read(root.path().join(PROJECT_FILE)).unwrap(),
+            b"project"
+        );
+        assert_eq!(fs::read(root.path().join(LOCK_FILE)).unwrap(), b"lock");
+        assert_eq!(
+            fs::read(root.path().join(VENDOR_DIR).join("package/restored")).unwrap(),
+            b"restored"
+        );
+        assert!(
+            !root
+                .path()
+                .join(STATE_DIR)
+                .join("transaction.json")
+                .exists()
+        );
     }
 }

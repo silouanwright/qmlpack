@@ -13,6 +13,7 @@ struct RawProjectManifest {
 
 #[derive(Debug, Clone)]
 pub struct ProjectManifest {
+    pub profile: String,
     pub dependencies: BTreeMap<String, Source>,
 }
 
@@ -24,9 +25,9 @@ impl ProjectManifest {
                 "project schemaVersion must be the integer 1".into(),
             ));
         }
-        if raw.profile != "omarchy" {
+        if !matches!(raw.profile.as_str(), "qml" | "quickshell" | "omarchy") {
             return Err(QmlpackError(
-                "schema version 1 supports only the omarchy profile".into(),
+                "profile must be qml, quickshell, or omarchy".into(),
             ));
         }
         let mut dependencies = BTreeMap::new();
@@ -36,7 +37,10 @@ impl ProjectManifest {
             }
             dependencies.insert(label, Source::parse(&source)?);
         }
-        Ok(Self { dependencies })
+        Ok(Self {
+            profile: raw.profile,
+            dependencies,
+        })
     }
 
     pub fn to_json(&self) -> Result<Vec<u8>, QmlpackError> {
@@ -47,7 +51,7 @@ impl ProjectManifest {
             .collect();
         json_bytes(&SerializableProjectManifest {
             schema_version: 1,
-            profile: "omarchy",
+            profile: &self.profile,
             dependencies,
         })
     }
@@ -95,15 +99,29 @@ impl Lockfile {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct LockedPackage {
     pub source: String,
-    pub repository_id: u64,
-    pub repository_name: String,
-    pub package_path: String,
-    pub requested: String,
-    pub version: Option<String>,
-    pub tag: Option<String>,
-    pub commit: String,
+    pub resolution: LockedResolution,
     pub digest: String,
     pub files: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "transport", rename_all = "lowercase", deny_unknown_fields)]
+pub enum LockedResolution {
+    Github {
+        repository_id: u64,
+        repository_name: String,
+        package_path: String,
+        requested: String,
+        version: Option<String>,
+        tag: Option<String>,
+        commit: String,
+    },
+    Npm {
+        registry: String,
+        name: String,
+        version: String,
+        integrity: String,
+    },
 }
 
 pub fn json_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, QmlpackError> {

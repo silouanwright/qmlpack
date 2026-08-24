@@ -11,8 +11,8 @@ to the package a consumer requested. Archives add traversal, special-file,
 compression-ratio, entry-count, and extraction concerns.
 
 Qmlpack packages are expected to be small collections of source files. Fetching
-an entire repository or archive would create a larger security boundary than
-the product requires.
+an entire repository creates a larger security boundary than the product
+requires. npm, however, exposes released package contents as tar archives.
 
 ## Decision
 
@@ -22,13 +22,14 @@ files. Apply fixed ceilings to response bytes, per-file bytes, aggregate bytes,
 file count, dependency count, dependency depth, and total resolved packages
 before retaining or parsing untrusted input.
 
-Reject undeclared files, unsafe paths, symbolic links, submodules, devices,
-duplicate normalized paths, and case-fold collisions. Do not use `git clone` or
-archive extraction in schema version 1.
+Reject unsafe paths, symbolic links, submodules, devices, duplicate normalized
+paths, and case-fold collisions. GitHub retrieval fetches only declared blobs
+and never clones or extracts the repository. npm retrieval verifies registry
+integrity, bounds both compressed and expanded content, rejects special archive
+entries, and retains only manifest-declared files from the archive.
 
 ## Consequences
 
-Small packages require more HTTP requests but have an inspectable resource
-envelope. Archive or Git transports may be added only after measurement shows
-the request overhead is material and their complete extraction boundaries are
-specified and tested.
+GitHub packages require more HTTP requests but have an inspectable resource
+envelope. npm packages accept the unavoidable archive boundary without treating
+archive membership as authority over installed files.

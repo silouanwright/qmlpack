@@ -1,5 +1,6 @@
 use crate::{
-    FILE_LIMIT, MANIFEST_LIMIT, PackageFile, PackageManifest, QmlpackError, Source, strict_json,
+    FILE_LIMIT, MANIFEST_LIMIT, PackageFile, PackageManifest, QmlpackError, Resolution,
+    ResolvedPackage, Source, strict_json,
 };
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -14,17 +15,6 @@ use std::time::Duration;
 
 const API_JSON_LIMIT: usize = 2 * 1024 * 1024;
 const TREE_ENTRIES_LIMIT: usize = 4096;
-
-#[derive(Debug, Clone)]
-pub struct ResolvedPackage {
-    pub source: Source,
-    pub repository_id: u64,
-    pub repository_name: String,
-    pub commit: String,
-    pub manifest: PackageManifest,
-    pub files: Vec<PackageFile>,
-    pub digest: String,
-}
 
 pub struct GitHubClient {
     client: Client,
@@ -62,8 +52,11 @@ impl GitHubClient {
     }
 
     pub fn resolve(&mut self, source: Source) -> Result<ResolvedPackage, QmlpackError> {
+        let Source::GitHub(github) = &source else {
+            return Err(QmlpackError("GitHub client received an npm source".into()));
+        };
         let repository: RepositoryResponse = self.api_json(
-            &["repos", &source.owner, &source.repository],
+            &["repos", &github.owner, &github.repository],
             API_JSON_LIMIT,
         )?;
         if repository.private {
@@ -79,12 +72,12 @@ impl GitHubClient {
 
         let reference = source
             .release_tag()
-            .unwrap_or_else(|| source.requested.clone());
+            .unwrap_or_else(|| github.requested.clone());
         let commit: CommitResponse = self.api_json(
             &[
                 "repos",
-                &source.owner,
-                &source.repository,
+                &github.owner,
+                &github.repository,
                 "commits",
                 &reference,
             ],
@@ -97,14 +90,14 @@ impl GitHubClient {
         }
 
         let package_tree = self.descend_tree(
-            &source.owner,
-            &source.repository,
+            &github.owner,
+            &github.repository,
             &commit.commit.tree.sha,
-            &source.package_path,
+            &github.package_path,
         )?;
         let manifest_entry = self.file_entry(
-            &source.owner,
-            &source.repository,
+            &github.owner,
+            &github.repository,
             &package_tree,
             "qmlpack.json",
         )?;
@@ -114,8 +107,8 @@ impl GitHubClient {
             ));
         }
         let manifest_bytes = self.blob(
-            &source.owner,
-            &source.repository,
+            &github.owner,
+            &github.repository,
             &manifest_entry,
             MANIFEST_LIMIT,
         )?;
@@ -123,7 +116,7 @@ impl GitHubClient {
 
         let mut files = Vec::with_capacity(manifest.files.len());
         for path in &manifest.files {
-            let entry = self.file_entry(&source.owner, &source.repository, &package_tree, path)?;
+            let entry = self.file_entry(&github.owner, &github.repository, &package_tree, path)?;
             let executable = manifest.executables.contains(path);
             let expected_mode = if executable { "100755" } else { "100644" };
             if entry.mode != expected_mode {
@@ -134,16 +127,23 @@ impl GitHubClient {
             }
             files.push(PackageFile {
                 path: path.clone(),
-                content: self.blob(&source.owner, &source.repository, &entry, FILE_LIMIT)?,
+                content: self.blob(&github.owner, &github.repository, &entry, FILE_LIMIT)?,
                 executable,
             });
         }
         let digest = crate::package_digest(&manifest, &files)?;
-        Ok(ResolvedPackage {
-            source,
+        let resolution = Resolution::GitHub {
             repository_id: repository.id,
             repository_name: repository.full_name,
+            package_path: github.package_path.clone(),
+            requested: github.requested.clone(),
+            version: source.version().map(|version| version.to_string()),
+            tag: source.release_tag(),
             commit: commit.sha.to_ascii_lowercase(),
+        };
+        Ok(ResolvedPackage {
+            source,
+            resolution,
             manifest,
             files,
             digest,

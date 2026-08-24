@@ -9,27 +9,26 @@ whether code is trustworthy.
 
 ## Required interaction
 
-`add` and `update` prepare a candidate and display a review summary. They do not
-change the project unless the developer supplies `--apply` after review.
+`add`, `update`, and `remove` prepare a candidate and display a review summary.
+They do not change the project until the developer separately runs `apply`.
 
 The review includes:
 
-- repository owner, repository name, and stable repository ID;
-- requested reference, release tag, and resolved commit;
-- package and transitive dependency identities;
+- canonical source identity and whether the dependency is direct or transitive;
+- requested GitHub reference, release tag, and resolved commit, or exact npm
+  version and registry integrity;
 - added, removed, and changed files;
 - declared executable files and compatibility requirements;
 - package and per-file SHA-256 digests;
-- license and notice files;
-- newly introduced executable files and textual command/process indicators.
+- license and notice files.
 
 Static indicators are review aids, not proof of safety.
 
 ## Human and AI review
 
 Developers may inspect changes manually, ask an AI coding agent to review the
-materialized candidate, or do both. Qmlpack provides deterministic Markdown and
-JSON review output for that purpose.
+materialized candidate, or do both. Qmlpack provides deterministic Markdown,
+lock data, and materialized source for that purpose.
 
 AI review can miss malicious behavior, indirect execution, vulnerabilities, or
 context-specific risk. Documentation and command output must never describe an

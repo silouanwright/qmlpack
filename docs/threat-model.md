@@ -72,6 +72,16 @@ not loaded into Quickshell during retrieval or validation.
 The CLI must not import package Python modules, evaluate QML/JavaScript, source
 shell files, or invoke commands declared by a package.
 
+## npm transport
+
+Qmlpack accepts only exact versions from the public HTTPS npm registry. It
+disables redirects, bounds metadata, compressed archives, expanded content,
+file counts, and individual files, verifies registry SRI before extraction,
+rejects links and special archive entries, and retains only files declared by
+the embedded `qmlpack.json`. It does not create `node_modules` or execute npm
+lifecycle scripts. These checks provide integrity and containment, not trust in
+the package author.
+
 ## Installation and recovery
 
 All writes occur beneath a project-controlled `vendor/qmlpack` directory.

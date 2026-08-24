@@ -9,6 +9,7 @@ use unicode_casefold::UnicodeCaseFold;
 use unicode_normalization::UnicodeNormalization;
 
 pub mod github;
+pub mod npm;
 pub mod project;
 pub mod resolver;
 pub mod workspace;
@@ -134,7 +135,10 @@ fn valid_name(value: &str) -> bool {
         && !value.ends_with('-')
 }
 
-fn validate_path(value: &str, allow_manifest_name: bool) -> Result<String, QmlpackError> {
+pub(crate) fn validate_path(
+    value: &str,
+    allow_manifest_name: bool,
+) -> Result<String, QmlpackError> {
     if value.is_empty()
         || value.starts_with('/')
         || value.contains('\\')
@@ -163,18 +167,44 @@ fn validate_path(value: &str, allow_manifest_name: bool) -> Result<String, Qmlpa
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Source {
+pub enum Source {
+    GitHub(GitHubSource),
+    Npm(NpmSource),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GitHubSource {
     pub owner: String,
     pub repository: String,
     pub package_path: String,
     pub requested: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NpmSource {
+    pub name: String,
+    pub version: Version,
+}
+
 impl Source {
     pub fn parse(value: &str) -> Result<Self, QmlpackError> {
+        if let Some(remainder) = value.strip_prefix("npm:") {
+            let (name, version) = remainder
+                .rsplit_once('@')
+                .ok_or_else(|| QmlpackError("npm source must end with @<exact-version>".into()))?;
+            if !valid_npm_name(name) {
+                return Err(QmlpackError("invalid npm package name".into()));
+            }
+            let version = Version::parse(version)
+                .map_err(|_| QmlpackError("npm source requires an exact SemVer".into()))?;
+            return Ok(Self::Npm(NpmSource {
+                name: name.to_owned(),
+                version,
+            }));
+        }
         let remainder = value
             .strip_prefix("github:")
-            .ok_or_else(|| QmlpackError("source must start with github:".into()))?;
+            .ok_or_else(|| QmlpackError("source must start with npm: or github:".into()))?;
         let (location, requested) = remainder
             .rsplit_once('@')
             .filter(|(_, requested)| !requested.is_empty())
@@ -198,44 +228,99 @@ impl Source {
             })?;
             requested.to_owned()
         };
-        Ok(Self {
+        Ok(Self::GitHub(GitHubSource {
             owner: owner.to_owned(),
             repository: repository.to_owned(),
             package_path,
             requested,
-        })
+        }))
     }
 
     pub fn canonical(&self) -> String {
-        let path = if self.package_path.is_empty() {
-            String::new()
-        } else {
-            format!("/{}", self.package_path)
-        };
-        format!(
-            "github:{}/{}{}@{}",
-            self.owner, self.repository, path, self.requested
-        )
+        match self {
+            Self::GitHub(source) => {
+                let path = if source.package_path.is_empty() {
+                    String::new()
+                } else {
+                    format!("/{}", source.package_path)
+                };
+                format!(
+                    "github:{}/{}{}@{}",
+                    source.owner, source.repository, path, source.requested
+                )
+            }
+            Self::Npm(source) => format!("npm:{}@{}", source.name, source.version),
+        }
     }
 
     pub fn version(&self) -> Option<Version> {
-        if is_sha(&self.requested) {
-            None
-        } else {
-            Version::parse(self.requested.strip_prefix('v').unwrap_or(&self.requested)).ok()
+        match self {
+            Self::GitHub(source) if is_sha(&source.requested) => None,
+            Self::GitHub(source) => Version::parse(
+                source
+                    .requested
+                    .strip_prefix('v')
+                    .unwrap_or(&source.requested),
+            )
+            .ok(),
+            Self::Npm(source) => Some(source.version.clone()),
         }
     }
 
     pub fn release_tag(&self) -> Option<String> {
+        let Self::GitHub(source) = self else {
+            return None;
+        };
         self.version().map(|version| {
-            let prefix = if self.package_path.is_empty() {
+            let prefix = if source.package_path.is_empty() {
                 String::new()
             } else {
-                format!("{}/", self.package_path)
+                format!("{}/", source.package_path)
             };
             format!("{prefix}v{version}")
         })
     }
+
+    pub fn with_requested(&self, requested: &str) -> Result<Self, QmlpackError> {
+        match self {
+            Self::GitHub(source) => {
+                let path = if source.package_path.is_empty() {
+                    String::new()
+                } else {
+                    format!("/{}", source.package_path)
+                };
+                Self::parse(&format!(
+                    "github:{}/{}{}@{requested}",
+                    source.owner, source.repository, path
+                ))
+            }
+            Self::Npm(source) => Self::parse(&format!("npm:{}@{requested}", source.name)),
+        }
+    }
+}
+
+fn valid_npm_name(value: &str) -> bool {
+    let package = if let Some(scoped) = value.strip_prefix('@') {
+        let Some((scope, package)) = scoped.split_once('/') else {
+            return false;
+        };
+        if !valid_npm_part(scope) {
+            return false;
+        }
+        package
+    } else {
+        value
+    };
+    valid_npm_part(package)
+}
+
+fn valid_npm_part(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && !value.starts_with(['.', '_'])
+        && value.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'-' | b'.' | b'_')
+        })
 }
 
 fn valid_repo_part(value: &str) -> bool {
@@ -384,6 +469,56 @@ impl PackageFile {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ResolvedPackage {
+    pub source: Source,
+    pub resolution: Resolution,
+    pub manifest: PackageManifest,
+    pub files: Vec<PackageFile>,
+    pub digest: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum Resolution {
+    GitHub {
+        repository_id: u64,
+        repository_name: String,
+        package_path: String,
+        requested: String,
+        version: Option<String>,
+        tag: Option<String>,
+        commit: String,
+    },
+    Npm {
+        registry: String,
+        name: String,
+        version: String,
+        integrity: String,
+    },
+}
+
+impl ResolvedPackage {
+    pub fn identity(&self) -> String {
+        match &self.resolution {
+            Resolution::GitHub {
+                repository_id,
+                package_path,
+                ..
+            } => format!("github:{repository_id}/{package_path}"),
+            Resolution::Npm { registry, name, .. } => format!("npm:{registry}/{name}"),
+        }
+    }
+
+    pub fn revision(&self) -> String {
+        match &self.resolution {
+            Resolution::GitHub { commit, .. } => commit.clone(),
+            Resolution::Npm {
+                version, integrity, ..
+            } => format!("{version}@{integrity}"),
+        }
+    }
+}
+
 pub fn package_digest(
     manifest: &PackageManifest,
     files: &[PackageFile],
@@ -451,6 +586,11 @@ mod tests {
         );
         assert_eq!(source.version().unwrap(), Version::new(0, 2, 0));
 
+        let npm = Source::parse("npm:@silouanwright/oma-ui@0.2.0").unwrap();
+        assert_eq!(npm.canonical(), "npm:@silouanwright/oma-ui@0.2.0");
+        assert_eq!(npm.version().unwrap(), Version::new(0, 2, 0));
+        assert!(npm.release_tag().is_none());
+
         let commit = Source::parse(&format!(
             "github:silouanwright/omatools/oma-ui@{}",
             "a".repeat(40)
@@ -462,6 +602,9 @@ mod tests {
             "github:owner/repo/../pkg@1.0.0",
             "github:owner/repo/pkg/@1.0.0",
             "github:owner/repo/pkg@1.0.0-01",
+            "npm:@silouanwright/oma-ui@latest",
+            "npm:@silouanwright@1.0.0",
+            "npm:Uppercase@1.0.0",
         ] {
             assert!(Source::parse(invalid).is_err(), "accepted {invalid}");
         }

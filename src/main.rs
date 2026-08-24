@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use qmlpack::github::GitHubClient;
+use qmlpack::npm::NpmClient;
 use qmlpack::resolver::Resolver;
 use qmlpack::workspace;
 use qmlpack::{MANIFEST_LIMIT, PackageManifest, QmlpackError, Source};
@@ -25,7 +26,10 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     /// Create an empty Qmlpack project manifest.
-    Init,
+    Init {
+        #[arg(long, default_value = "omarchy", value_parser = ["qml", "quickshell", "omarchy"])]
+        profile: String,
+    },
     /// Prepare a package addition for review without changing the project.
     Add { label: String, source: String },
     /// Prepare one direct dependency at a new exact version or commit.
@@ -51,14 +55,19 @@ enum Command {
         #[arg(default_value = "qmlpack.json")]
         path: PathBuf,
     },
+    /// Validate a local package and every file it would release.
+    ReleaseCheck {
+        #[arg(default_value = ".")]
+        path: PathBuf,
+    },
     #[command(hide = true)]
     InspectSource { source: String },
 }
 
 fn run(cli: Cli) -> Result<(), QmlpackError> {
     match cli.command {
-        Command::Init => {
-            workspace::initialize(&cli.project)?;
+        Command::Init { profile } => {
+            workspace::initialize(&cli.project, &profile)?;
             println!("Created {}", cli.project.join("qmlpack.json").display());
         }
         Command::Add { label, source } => {
@@ -77,15 +86,7 @@ fn run(cli: Cli) -> Result<(), QmlpackError> {
                 .dependencies
                 .get(&label)
                 .ok_or_else(|| QmlpackError(format!("unknown direct dependency: {label}")))?;
-            let path = if old.package_path.is_empty() {
-                String::new()
-            } else {
-                format!("/{}", old.package_path)
-            };
-            let updated = Source::parse(&format!(
-                "github:{}/{}{}@{to}",
-                old.owner, old.repository, path
-            ))?;
+            let updated = old.with_requested(&to)?;
             project.dependencies.insert(label, updated);
             prepare(&cli.project, &project)?;
         }
@@ -121,6 +122,15 @@ fn run(cli: Cli) -> Result<(), QmlpackError> {
                 manifest.dependencies.len()
             );
         }
+        Command::ReleaseCheck { path } => {
+            let manifest = workspace::release_check(&path)?;
+            println!(
+                "{} is release-ready: {} files, {} dependencies",
+                manifest.name,
+                manifest.files.len(),
+                manifest.dependencies.len()
+            );
+        }
         Command::InspectSource { source } => println!("{}", Source::parse(&source)?.canonical()),
     }
     Ok(())
@@ -131,8 +141,10 @@ fn prepare(
     project: &qmlpack::project::ProjectManifest,
 ) -> Result<(), QmlpackError> {
     let token = env::var("GITHUB_TOKEN").ok();
-    let mut client = GitHubClient::new(token.as_deref())?;
-    let graph = Resolver::new(&mut client).resolve(&project.dependencies)?;
+    let mut github = GitHubClient::new(token.as_deref())?;
+    let npm = NpmClient::new()?;
+    let graph =
+        Resolver::new(&mut github, &npm).resolve(&project.dependencies, &project.profile)?;
     let review = workspace::prepare(root, project, &graph)?;
     print!("{review}");
     println!("Review `.qmlpack/candidate/`, then run `qmlpack apply`.");
