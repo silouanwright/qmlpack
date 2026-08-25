@@ -15,7 +15,7 @@ version bumps.
 `qmlpack.json` does not contain a current version. For npm releases,
 `package.json` and the registry's immutable name/version pair are authoritative.
 For GitHub releases, independent packages use package-path-prefixed SemVer tags
-such as `packages/oma-ui/v0.2.0`. Exact commits may be installed as unversioned
+such as `packages/oma-ui-kit/v0.1.0`. Exact commits may be installed as unversioned
 development snapshots.
 
 The lockfile records the requested reference, resolved tag and version when

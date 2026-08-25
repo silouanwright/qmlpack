@@ -35,7 +35,7 @@ Every package root contains `qmlpack.json`:
 ```json
 {
   "schemaVersion": 1,
-  "name": "oma-ui",
+  "name": "oma-ui-kit",
   "license": "MIT",
   "files": [
     "Ui/Button.qml",
@@ -56,7 +56,7 @@ Every package root contains `qmlpack.json`:
 
 `version` is deliberately absent. npm's `package.json` owns the version of an
 npm release. GitHub releases use package-prefixed SemVer tags, for example
-`oma-ui/v0.2.0`. Ordinary commits are valid development snapshots and are not
+`oma-ui-kit/v0.1.0`. Ordinary commits are valid development snapshots and are not
 assigned invented versions.
 
 ### Required fields
@@ -108,11 +108,11 @@ configurable in a later schema only if real packages require it.
 ## Releases
 
 Each package owns an independent release stream. An npm package publishes an
-immutable name/version pair. A GitHub package at `packages/oma-ui` uses tags
+immutable name/version pair. A GitHub package at `packages/oma-ui-kit` uses tags
 like:
 
 ```text
-packages/oma-ui/v0.2.0
+packages/oma-ui-kit/v0.1.0
 ```
 
 Git tags must never be moved or reused. qmlpack encourages GitHub immutable
@@ -153,8 +153,8 @@ The consuming plugin owns `qmlpack.json` at its repository root:
   "schemaVersion": 1,
   "profile": "omarchy",
   "dependencies": {
-    "oma-ui": "npm:@silouanwright/oma-ui@0.2.0",
-    "experimental": "github:silouanwright/omatools/packages/oma-ui@<commit>"
+    "oma-ui-kit": "npm:@silouanwright/oma-ui-kit@0.1.0",
+    "experimental": "github:silouanwright/omatools/packages/oma-ui-kit@<commit>"
   }
 }
 ```
@@ -170,16 +170,16 @@ not replace canonical source identity.
 {
   "schemaVersion": 1,
   "packages": {
-    "oma-ui": {
-      "source": "github:silouanwright/omatools/packages/oma-ui@0.2.0",
+    "oma-ui-kit": {
+      "source": "github:silouanwright/omatools/packages/oma-ui-kit@0.1.0",
       "resolution": {
         "transport": "github",
         "repository_id": 123456789,
         "repository_name": "silouanwright/omatools",
-        "package_path": "packages/oma-ui",
-        "requested": "0.2.0",
-        "version": "0.2.0",
-        "tag": "packages/oma-ui/v0.2.0",
+        "package_path": "packages/oma-ui-kit",
+        "requested": "0.1.0",
+        "version": "0.1.0",
+        "tag": "packages/oma-ui-kit/v0.1.0",
         "commit": "0123456789abcdef0123456789abcdef01234567"
       },
       "digest": "sha256:...",

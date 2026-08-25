@@ -21,9 +21,9 @@ after the command and lockfile contracts stabilize.
 Before every independent package release, run:
 
 ```bash
-qmlpack release-check packages/oma-ui
+qmlpack release-check packages/oma-ui-kit
 qmlpack release-check packages/bounded-read
-(cd packages/oma-ui && npm pack --dry-run)
+(cd packages/oma-ui-kit && npm pack --dry-run)
 (cd packages/bounded-read && npm pack --dry-run)
 ```
 

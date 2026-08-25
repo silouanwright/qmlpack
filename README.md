@@ -21,7 +21,7 @@ cargo install --git https://github.com/silouanwright/qmlpack --locked
 
 ```bash
 qmlpack init --profile omarchy
-qmlpack add oma-ui github:silouanwright/omatools/packages/oma-ui@0.2.0
+qmlpack add oma-ui-kit github:silouanwright/omatools/packages/oma-ui-kit@0.1.0
 ```
 
 Nothing changes in your project yet. qmlpack resolves and materializes a
@@ -41,8 +41,8 @@ qmlpack verify
 Updates and removals use the same review boundary:
 
 ```bash
-qmlpack update oma-ui --to 0.2.1
-qmlpack remove oma-ui
+qmlpack update oma-ui-kit --to 0.1.1
+qmlpack remove oma-ui-kit
 ```
 
 ## Sources
@@ -65,7 +65,7 @@ distributed files, dependencies, and any executable files. Validate it before
 creating a GitHub tag or publishing to npm:
 
 ```bash
-qmlpack release-check packages/oma-ui
+qmlpack release-check packages/oma-ui-kit
 ```
 
 Packages release independently. qmlpack does not own registry credentials or

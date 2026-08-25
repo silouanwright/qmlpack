@@ -28,8 +28,8 @@ canonical digest.
 Example sources:
 
 ```text
-npm:@silouanwright/oma-ui@0.1.0
-github:silouanwright/omatools/packages/oma-ui@<commit>
+npm:@silouanwright/oma-ui-kit@0.1.0
+github:silouanwright/omatools/packages/oma-ui-kit@<commit>
 ```
 
 qmlpack accesses registry metadata and tarballs directly. It does not invoke
