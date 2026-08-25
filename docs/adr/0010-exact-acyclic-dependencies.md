@@ -7,7 +7,7 @@
 
 Version ranges and multiple registries introduce a dependency solver,
 dependency confusion, nondeterministic updates, and diamond conflicts before
-Qmlpack has demonstrated that Omarchy source packages need them.
+qmlpack has demonstrated that Omarchy source packages need them.
 
 ## Decision
 

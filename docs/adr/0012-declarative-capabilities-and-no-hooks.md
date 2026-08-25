@@ -5,7 +5,7 @@
 
 ## Context
 
-Package lifecycle scripts are a major supply-chain execution boundary. Qmlpack
+Package lifecycle scripts are a major supply-chain execution boundary. qmlpack
 distributes source that may itself invoke processes after a plugin loads, but
 the manager does not need to execute package code to install it.
 

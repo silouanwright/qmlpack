@@ -1,4 +1,4 @@
-# Qmlpack Package Format
+# qmlpack Package Format
 
 Status: draft for the first implementation.
 
@@ -87,7 +87,7 @@ All paths are UTF-8 relative paths using `/`. A path must not:
 - contain NUL, control characters, or a backslash;
 - exceed 1,024 UTF-8 bytes in total or 255 UTF-8 bytes in one component;
 - collide with another path after Unicode NFC normalization and case folding;
-- name `.git`, `qmlpack.json`, `qmlpack.lock`, or Qmlpack's staging metadata;
+- name `.git`, `qmlpack.json`, `qmlpack.lock`, or qmlpack's staging metadata;
 - resolve through a symbolic link or represent a submodule or special file.
 
 Schema version 1 limits:
@@ -115,9 +115,9 @@ like:
 packages/oma-ui/v0.2.0
 ```
 
-Git tags must never be moved or reused. Qmlpack encourages GitHub immutable
+Git tags must never be moved or reused. qmlpack encourages GitHub immutable
 releases, but consumers do not rely on tag immutability alone. npm packages
-also contain `qmlpack.json`; Qmlpack never executes their lifecycle scripts.
+also contain `qmlpack.json`; qmlpack never executes their lifecycle scripts.
 
 ## Canonical digest
 
@@ -138,7 +138,7 @@ qmlpack-package-v1\0
 
 The prefix and manifest are emitted once before the first file. Line endings
 and all bytes are preserved. `qmlpack.json` must not also appear in `files`;
-Qmlpack stores its exact source bytes as package metadata rather than exposing
+qmlpack stores its exact source bytes as package metadata rather than exposing
 it as consumer-owned source.
 
 Canonical digest test vectors are required before schema version 1 is declared
@@ -192,23 +192,23 @@ not replace canonical source identity.
 ```
 
 An npm lock entry records registry URL, package name, exact version, registry
-integrity, and Qmlpack digest. A GitHub entry records repository
+integrity, and qmlpack digest. A GitHub entry records repository
 ID, package path, requested reference, resolved commit, optional tag/version,
-and Qmlpack digest. Development commits have version and tag set to `null`.
+and qmlpack digest. Development commits have version and tag set to `null`.
 
 ## Installation ownership
 
-Qmlpack owns only `vendor/qmlpack/<dependency-label>/`. Installation stages a
+qmlpack owns only `vendor/qmlpack/<dependency-label>/`. Installation stages a
 complete dependency tree in the consuming repository, validates it, and then
-atomically replaces Qmlpack-owned directories. The lockfile is written last.
+atomically replaces qmlpack-owned directories. The lockfile is written last.
 
 An update refuses to replace a managed file whose current digest differs from
 the lockfile unless the user explicitly requests a forced replacement. Removal
-deletes only the recorded Qmlpack-owned directory and lock entry.
+deletes only the recorded qmlpack-owned directory and lock entry.
 
 ## Release validation
 
 `qmlpack release-check <package-directory>` validates the manifest, declared
 regular files, byte ceilings, and executable modes before an author creates a
-GitHub tag or runs `npm publish`. Publishing stays transport-owned; Qmlpack does
+GitHub tag or runs `npm publish`. Publishing stays transport-owned; qmlpack does
 not hold registry credentials or run release hooks.

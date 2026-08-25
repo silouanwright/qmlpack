@@ -7,14 +7,14 @@
 ## Context
 
 An initial Python slice proved the strict manifest, source-reference, and
-canonical-digest contracts with little code. Qmlpack, however, is intended to
+canonical-digest contracts with little code. qmlpack, however, is intended to
 be a distributable security-sensitive developer tool rather than a plugin
 runtime helper. Requiring a particular interpreter and environment is an
 avoidable deployment boundary.
 
 ## Decision
 
-Implement Qmlpack as one Rust CLI crate producing a standalone binary. Use
+Implement qmlpack as one Rust CLI crate producing a standalone binary. Use
 mature focused crates for command parsing, strict serialization, HTTPS with
 rustls, SemVer, SHA-256, Unicode normalization, Base64, and secure temporary
 files. Do not create a workspace or internal abstraction layers until more than
@@ -22,7 +22,7 @@ one shipped crate requires them.
 
 Keep LookElsewhere's small `bounded-read` Python utility separate. It solves a
 narrow descriptor-relative runtime problem inside the plugin and is not part of
-Qmlpack's execution path.
+qmlpack's execution path.
 
 ## Alternatives considered
 
@@ -31,7 +31,7 @@ Qmlpack's execution path.
   depend on an interpreter and Python environment. Rejected for the shipped
   CLI, not as an unsuitable language in general.
 - **JavaScript or Node:** would align with npm publishing but would require a
-  JavaScript runtime to install QML packages. Qmlpack uses the registry HTTP API
+  JavaScript runtime to install QML packages. qmlpack uses the registry HTTP API
   directly and deliberately avoids npm's installation and lifecycle execution
   model.
 - **Shell:** is suitable for orchestration but not for strict duplicate-key JSON
@@ -52,7 +52,7 @@ boundary.
 
 ## Consequences
 
-Qmlpack can ship as one architecture-specific release asset and later through
+qmlpack can ship as one architecture-specific release asset and later through
 AUR or an Omarchy-supported system package without a Python runtime dependency.
 Compilation is heavier than the prototype, but package consumers do not compile
-or run Qmlpack when using an already self-contained Omarchy plugin.
+or run qmlpack when using an already self-contained Omarchy plugin.

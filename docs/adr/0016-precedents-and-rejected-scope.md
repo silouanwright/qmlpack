@@ -5,7 +5,7 @@
 
 ## Context
 
-Qmlpack overlaps several established systems but serves a narrower host that
+qmlpack overlaps several established systems but serves a narrower host that
 currently accepts only self-contained plugin repositories.
 
 ## Decision
@@ -24,9 +24,9 @@ Adopt:
 
 Reject from the initial scope:
 
-- a publishing service operated by Qmlpack or a mandatory registry;
+- a publishing service operated by qmlpack or a mandatory registry;
 - npm-style lifecycle scripts and automatic transitive updates;
-- a Qmlpack-operated global namespace and package artifact store;
+- a qmlpack-operated global namespace and package artifact store;
 - pnpm-style symlink or hardlink installation, which conflicts with Omarchy's
   self-contained plugin validation and marketplace packaging;
 - Git submodules, repository cloning, and archive extraction;

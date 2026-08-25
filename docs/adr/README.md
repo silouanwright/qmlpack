@@ -17,4 +17,4 @@
 - [0015: CLI bootstrap and self-update](0015-cli-bootstrap-and-self-update.md)
 - [0016: Precedents and rejected scope](0016-precedents-and-rejected-scope.md)
 - [0017: npm releases and GitHub snapshots](0017-npm-releases-and-github-snapshots.md)
-- [0018: Qmlpack name and scope](0018-qmlpack-name-and-scope.md)
+- [0018: qmlpack name and scope](0018-qmlpack-name-and-scope.md)

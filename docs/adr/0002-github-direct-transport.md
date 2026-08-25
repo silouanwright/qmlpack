@@ -7,7 +7,7 @@
 
 Cloning an untrusted repository or extracting an archive exposes the installer
 to repository, pack, archive, special-file, and decompression resource attacks.
-Qmlpack packages are expected to be small source libraries.
+qmlpack packages are expected to be small source libraries.
 
 ## Decision
 

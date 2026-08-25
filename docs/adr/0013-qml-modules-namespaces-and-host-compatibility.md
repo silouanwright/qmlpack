@@ -12,7 +12,7 @@ module URIs or type names, and a package may depend on host-specific APIs.
 
 ## Decision
 
-Qmlpack distributes source packages; it does not replace QML module semantics.
+qmlpack distributes source packages; it does not replace QML module semantics.
 Packages that expose reusable QML types should include a `qmldir` and use a
 namespaced module URI. The first implementation validates declared Qt,
 Quickshell, and Omarchy compatibility metadata and reports it during review.
@@ -21,18 +21,18 @@ Omarchy's injected services, themes, components, paths, or lifecycle even
 though its source is QML executed by Quickshell.
 
 Compatibility is package-wide. Authors should split portable primitives from
-host adapters when both are independently useful, but Qmlpack does not require
+host adapters when both are independently useful, but qmlpack does not require
 one package per file and does not infer portability by scanning imports. For
 example, a generic rolling-number component can declare Quickshell alone,
 while a control bound to Omarchy theme tokens declares Quickshell and Omarchy.
 
 Relative imports remain allowed for small, internally namespaced vendored
-libraries such as LookElsewhere's initial extraction. Qmlpack does not rewrite
+libraries such as LookElsewhere's initial extraction. qmlpack does not rewrite
 QML imports or source files. Conflicting module URIs or dependency labels are
 errors rather than candidates for automatic renaming.
 
 ## Consequences
 
-QML tooling and runtime imports remain recognizable, while Qmlpack focuses on
+QML tooling and runtime imports remain recognizable, while qmlpack focuses on
 retrieval and materialization. Host API compatibility is declared and reviewed,
 not inferred perfectly from source.

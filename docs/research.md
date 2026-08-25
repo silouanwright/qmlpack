@@ -14,7 +14,7 @@ plugins. Consumers therefore need self-contained plugin repositories today.
 The nearest historical precedent is qpm, an archived Qt/QML source package
 manager. qpm stored metadata in its own service while source remained in
 author-owned repositories, created a project manifest, resolved nested
-dependencies, and vendored source. Its service was later shut down. Qmlpack
+dependencies, and vendored source. Its service was later shut down. qmlpack
 retains the source-package insight without operating registry infrastructure
 or inheriting the build-system concerns of compiled Qt applications.
 
@@ -41,8 +41,8 @@ The useful distinctions are dependency intent versus an exact committed lock,
 scoped publisher namespaces, registry integrity, and immutable name/version
 pairs. npm accepts packages of computer code rather than requiring JavaScript
 entry points, making real QML modules suitable package contents under its
-acceptable-use policy. Lifecycle scripts demonstrate a trust boundary Qmlpack
-deliberately avoids: Qmlpack reads registry metadata and bounded tarballs
+acceptable-use policy. Lifecycle scripts demonstrate a trust boundary qmlpack
+deliberately avoids: qmlpack reads registry metadata and bounded tarballs
 directly and never invokes `npm install`.
 
 ### Cargo
@@ -71,7 +71,7 @@ artifacts without making npm or pnpm the QML materializer.
 
 SwiftPM confirms that Git tags and exact revisions can coexist as dependency
 requirements. Qt's QML module system supplies namespaced runtime imports and
-tooling but not discovery or retrieval of author-owned source. Qmlpack should
+tooling but not discovery or retrieval of author-owned source. qmlpack should
 distribute valid QML modules rather than inventing another runtime module
 format.
 

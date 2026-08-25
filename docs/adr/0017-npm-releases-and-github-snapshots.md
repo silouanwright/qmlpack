@@ -6,7 +6,7 @@
 ## Context
 
 Git tags and exact commits can distribute source without an account in a
-package registry, but they make Qmlpack reconstruct release identity,
+package registry, but they make qmlpack reconstruct release identity,
 immutability, discovery, and version metadata from repository conventions.
 The historical Qt Package Manager operated its own metadata service while
 keeping source in author-owned Git repositories. When that service shut down,
@@ -22,7 +22,7 @@ storage under npm's acceptable-use terms.
 
 Use npm as the preferred transport for stable public releases and retain
 GitHub as a first-class transport for exact commits and Git-tagged releases.
-Both transports resolve into the same bounded Qmlpack package envelope and
+Both transports resolve into the same bounded qmlpack package envelope and
 canonical digest.
 
 Example sources:
@@ -32,7 +32,7 @@ npm:@silouanwright/oma-ui@0.1.0
 github:silouanwright/omatools/packages/oma-ui@<commit>
 ```
 
-Qmlpack accesses registry metadata and tarballs directly. It does not invoke
+qmlpack accesses registry metadata and tarballs directly. It does not invoke
 `npm install`, create `node_modules`, or execute package lifecycle scripts.
 Before parsing or retaining package content it enforces compressed-response,
 expanded-byte, file-count, path, and individual-file limits. It verifies the
@@ -53,19 +53,19 @@ unreleased or experimental packages, and authors who do not want a registry
 publishing step.
 
 Complete Omarchy plugins continue to publish as Git repositories because that
-is the Omarchy installation and marketplace contract. Their Qmlpack
+is the Omarchy installation and marketplace contract. Their qmlpack
 dependencies may independently use npm releases or GitHub snapshots.
 
 Authors may expose the same project through both services: GitHub remains the
 reviewable source history while npm carries the canonical stable artifact.
-Qmlpack does not consider those locations interchangeable. It records the
+qmlpack does not consider those locations interchangeable. It records the
 requested transport in the lockfile and never silently falls back from npm to
 GitHub or from GitHub to npm, even when metadata links them to the same project.
 Changing transports is an explicit dependency update with a complete review.
 
 ## Consequences
 
-Qmlpack does not operate registry infrastructure and users do not need Node or
+qmlpack does not operate registry infrastructure and users do not need Node or
 npm to consume packages. Publishers choosing npm use its account, namespace,
 and acceptable-use policies. Packages remain retrievable from GitHub when npm
 is unsuitable, and lockfiles identify the transport so one cannot silently

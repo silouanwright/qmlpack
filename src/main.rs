@@ -25,7 +25,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Create an empty Qmlpack project manifest.
+    /// Create an empty qmlpack project manifest.
     Init {
         #[arg(long, default_value = "omarchy", value_parser = ["qml", "quickshell", "omarchy"])]
         profile: String,
@@ -100,7 +100,7 @@ fn run(cli: Cli) -> Result<(), QmlpackError> {
         Command::Diff => print!("{}", workspace::candidate_review(&cli.project)?),
         Command::Apply { force } => {
             workspace::apply(&cli.project, force)?;
-            println!("Applied reviewed Qmlpack candidate.");
+            println!("Applied reviewed qmlpack candidate.");
         }
         Command::Verify => {
             workspace::verify(&cli.project)?;

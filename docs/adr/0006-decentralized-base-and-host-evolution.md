@@ -5,7 +5,7 @@
 
 ## Context
 
-Qmlpack needs useful package sharing before anyone operates a registry, and
+qmlpack needs useful package sharing before anyone operates a registry, and
 Omarchy 4.x does not install dependencies declared by plugins. Both conditions
 may change if the ecosystem succeeds.
 
@@ -17,12 +17,12 @@ metadata without owning package contents or releases.
 
 Vendor resolved source into plugins for the present Omarchy contract. Keep
 package manifests independent of their materialized destination so a future
-native Omarchy dependency installer can consume Qmlpack resolution and lock
+native Omarchy dependency installer can consume qmlpack resolution and lock
 data without requiring committed vendor directories.
 
 ## Consequences
 
-Qmlpack works without centralized infrastructure today. Popularity can improve
+qmlpack works without centralized infrastructure today. Popularity can improve
 discovery and review incrementally rather than forcing a registry migration.
 If Omarchy adopts package dependencies, moving installation to the host becomes
 an adapter change instead of a new package ecosystem.

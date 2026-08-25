@@ -4,7 +4,7 @@ Packages are source code that will run as part of a desktop environment. The
 developer consuming a package is responsible for reviewing every installation
 and every update.
 
-Qmlpack verifies provenance, integrity, and reproducibility. It does not decide
+qmlpack verifies provenance, integrity, and reproducibility. It does not decide
 whether code is trustworthy.
 
 ## Required interaction
@@ -27,7 +27,7 @@ Static indicators are review aids, not proof of safety.
 ## Human and AI review
 
 Developers may inspect changes manually, ask an AI coding agent to review the
-materialized candidate, or do both. Qmlpack provides deterministic Markdown,
+materialized candidate, or do both. qmlpack provides deterministic Markdown,
 lock data, and materialized source for that purpose.
 
 AI review can miss malicious behavior, indirect execution, vulnerabilities, or

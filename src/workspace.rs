@@ -293,7 +293,7 @@ fn review_markdown(
 ) -> Result<String, QmlpackError> {
     let previous = read_lock(root)?.unwrap_or_else(Lockfile::empty);
     let mut output = String::from(
-        "# Qmlpack review\n\nIntegrity is verified; package safety is not. Inspect all source before applying.\n\n",
+        "# qmlpack review\n\nIntegrity is verified; package safety is not. Inspect all source before applying.\n\n",
     );
     for (label, package) in &lock.packages {
         let status = match previous.packages.get(label) {

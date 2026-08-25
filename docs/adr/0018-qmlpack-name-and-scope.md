@@ -1,4 +1,4 @@
-# ADR 0018: Qmlpack name and scope
+# ADR 0018: qmlpack name and scope
 
 - Status: Accepted
 - Date: 2026-08-24
@@ -16,16 +16,16 @@ an official relationship with Quickshell.
 
 ## Decision
 
-Name the project and command Qmlpack. Use `qmlpack.json`, `qmlpack.lock`,
+Name the project and command qmlpack. Use `qmlpack.json`, `qmlpack.lock`,
 `.qmlpack/`, and `vendor/qmlpack/` consistently.
 
-Qmlpack is a review-first source dependency materializer for QML projects. It
+qmlpack is a review-first source dependency materializer for QML projects. It
 does not replace npm, GitHub, QML modules, Quickshell, or the Omarchy plugin
 manager:
 
 - npm and GitHub publish and store source;
 - QML `qmldir` files define runtime module namespaces;
-- Qmlpack retrieves, reviews, locks, and materializes packages;
+- qmlpack retrieves, reviews, locks, and materializes packages;
 - Quickshell supplies a runtime contract when declared;
 - Omarchy supplies an optional host and complete-plugin contract.
 

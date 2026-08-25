@@ -1,9 +1,9 @@
 # Release handoff
 
-Qmlpack is currently validated locally. Publishing is intentionally separate
+qmlpack is currently validated locally. Publishing is intentionally separate
 from package resolution and requires the owner's explicit credentials.
 
-## Qmlpack CLI
+## qmlpack CLI
 
 1. Create the `silouanwright/qmlpack` GitHub repository and add it as `origin`.
 2. Run `cargo fmt --check`, `cargo test`, and
@@ -29,8 +29,8 @@ qmlpack release-check packages/bounded-read
 
 The first npm publication still requires `npm login`, ownership of the
 `@silouanwright` scope, and an explicit `npm publish --access public` from each
-package directory. Never run publication from Qmlpack and never add package
+package directory. Never run publication from qmlpack and never add package
 lifecycle scripts.
 
 After publication, switch a consumer from GitHub to npm only through a normal
-`qmlpack update` review. Qmlpack does not silently substitute transports.
+`qmlpack update` review. qmlpack does not silently substitute transports.

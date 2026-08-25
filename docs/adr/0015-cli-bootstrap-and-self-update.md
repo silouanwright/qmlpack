@@ -11,8 +11,8 @@ through package-provided code would make its trust boundary recursive.
 
 ## Decision
 
-Implement Qmlpack as a standalone Rust binary and distribute it separately from
-packages. Do not allow Qmlpack packages to install or update Qmlpack. The
+Implement qmlpack as a standalone Rust binary and distribute it separately from
+packages. Do not allow qmlpack packages to install or update qmlpack. The
 initial repository documents pinned release binaries; a signed Arch/AUR or
 Omarchy-supported system package may follow when release demand exists.
 

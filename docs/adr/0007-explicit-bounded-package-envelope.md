@@ -10,7 +10,7 @@ submodules, symbolic links, Git LFS metadata, and filesystem entries unrelated
 to the package a consumer requested. Archives add traversal, special-file,
 compression-ratio, entry-count, and extraction concerns.
 
-Qmlpack packages are expected to be small collections of source files. Fetching
+qmlpack packages are expected to be small collections of source files. Fetching
 an entire repository creates a larger security boundary than the product
 requires. npm, however, exposes released package contents as tar archives.
 

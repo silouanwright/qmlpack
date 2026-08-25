@@ -1,86 +1,95 @@
-# Qmlpack
+# qmlpack
 
-Qmlpack turns ad hoc QML source copying into a traceable, reproducible, and
-reviewable dependency workflow. It supports portable QML, Quickshell code, and
-Omarchy-aware packages, with Omarchy as its first fully validated host.
+Review-first source packages for QML, Quickshell, and Omarchy.
 
-Omarchy plugins are self-contained Git repositories today. That makes shared
-QML components and utilities easy to copy but difficult to identify, update,
-or audit later. Qmlpack vendors declared source files into a plugin and records
-their exact origin, commit, and content digest.
+QML developers already share code by copying files between projects. qmlpack
+keeps that simple, self-contained model while adding versioning, provenance,
+integrity, dependency resolution, and a safe update path.
 
-Qmlpack verifies **what** you installed. It does not certify that third-party
-code is safe. Review every package before installation and every change before
-an update, manually or with an AI coding agent. AI review is useful but is not
-a security guarantee.
+Packages are committed as ordinary files under `vendor/qmlpack/`. People using
+your app or plugin do not need qmlpack, Rust, npm, or network access.
 
-## Status
+## Install
 
-Qmlpack is under active development and is not affiliated with Qt, Quickshell,
-npm, or Omarchy. Its first supported host profile is Omarchy 4.x. Portable QML
-and Quickshell packages use the same source envelope without claiming support
-for every standalone shell's integration conventions. Bounded GitHub and public
-npm transports are implemented. Publishing the first npm packages remains an
-account-level release step.
-
-## Design
-
-- npm is the preferred release registry in the accepted design; exact GitHub
-  sources are already supported and remain first-class.
-- Packages declare an explicit, bounded list of files.
-- npm releases use immutable scoped name/version pairs; GitHub packages may use
-  exact commits or package-prefixed SemVer tags.
-- Lockfiles pin transport identity, resolved source, integrity, and canonical
-  SHA-256.
-- Installed source is committed under `vendor/qmlpack/` with the plugin.
-- Adds and updates stop for inspection before changing the working tree.
-- There are no install hooks or automatic updates.
-
-Qmlpack does not operate a package registry. Authors may publish immutable
-releases to npm or use fully qualified GitHub sources. Qmlpack talks to those
-services directly without invoking `npm install` or executing package hooks.
-
-Committed vendoring is also a compatibility strategy for Omarchy's current
-plugin contract, not an assumption that must last forever. If
-`omarchy plugin add` later installs declared dependencies itself, Qmlpack can
-resolve and lock packages for the host installer instead of committing their
-source into each plugin. Existing manifests and lockfiles remain useful in
-either model.
-
-The normative contracts live in:
-
-- [Package specification](docs/package-format.md)
-- [Threat model](docs/threat-model.md)
-- [Review policy](docs/review-policy.md)
-- [Architecture decisions](docs/adr/README.md)
-- [Research synthesis and primary sources](docs/research.md)
-
-## Workflow
-
-Build and install the current checkout with the standard Rust toolchain:
+With a stable [Rust toolchain](https://rustup.rs/):
 
 ```bash
-cargo install --path .
+cargo install --git https://github.com/silouanwright/qmlpack --locked
 ```
 
+## Use
+
 ```bash
-qmlpack init
+qmlpack init --profile omarchy
 qmlpack add oma-ui github:silouanwright/omatools/packages/oma-ui@0.2.0
+```
+
+Nothing changes in your project yet. qmlpack resolves and materializes a
+candidate for inspection:
+
+```bash
 qmlpack diff
+```
+
+Apply it only after review, then verify the installed source whenever needed:
+
+```bash
 qmlpack apply
 qmlpack verify
 ```
 
-Package authors can validate an independently releasable package before tagging
-or publishing it:
+Updates and removals use the same review boundary:
+
+```bash
+qmlpack update oma-ui --to 0.2.1
+qmlpack remove oma-ui
+```
+
+## Sources
+
+qmlpack supports exact npm releases and GitHub releases or commits:
+
+```text
+npm:@scope/package@1.2.3
+github:owner/repository/package/path@1.2.3
+github:owner/repository/package/path@<commit>
+```
+
+It never runs `npm install`, lifecycle scripts, build hooks, or
+package-provided commands.
+
+## Publish a package
+
+A package owns a small `qmlpack.json` that names its license, compatibility,
+distributed files, dependencies, and any executable files. Validate it before
+creating a GitHub tag or publishing to npm:
 
 ```bash
 qmlpack release-check packages/oma-ui
 ```
 
-See [Release handoff](docs/releasing.md) for the remaining GitHub and npm
-publication steps. Qmlpack never performs those credentialed actions itself.
+Packages release independently. qmlpack does not own registry credentials or
+publish on an author's behalf.
+
+## Review, not trust
+
+qmlpack verifies exactly what source was retrieved and installed. It does not
+certify third-party code as safe. Every addition and update stops for inspection
+before changing the project.
+
+For the detailed contracts and reasoning, see the
+[package format](docs/package-format.md), [threat model](docs/threat-model.md),
+[review policy](docs/review-policy.md), and [ADRs](docs/adr/README.md).
+
+## Working proof
+
+[LookElsewhere](https://github.com/silouanwright/lookelsewhere) uses qmlpack for
+its shared keyboard-first QML controls and bounded state-file reader while
+remaining a self-contained Omarchy plugin.
+
+qmlpack is early software. Omarchy 4.x is its first fully validated host, with
+portable QML and Quickshell packages supported by the same package format.
 
 ## License
 
-MIT
+[MIT](LICENSE)
