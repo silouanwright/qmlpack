@@ -142,7 +142,7 @@ pub(crate) fn validate_path(
     if value.is_empty()
         || value.starts_with('/')
         || value.contains('\\')
-        || value.bytes().any(|byte| byte < 32)
+        || value.chars().any(char::is_control)
         || value.len() > 1024
         || value.nfc().collect::<String>() != value
     {
@@ -621,6 +621,12 @@ mod tests {
         let reserved =
             br#"{"schemaVersion":1,"name":"x","license":"MIT","files":["qmlpack.json"]}"#;
         assert!(PackageManifest::parse(reserved).is_err());
+        for control in ['\u{7f}', '\u{85}'] {
+            let invalid = format!(
+                "{{\"schemaVersion\":1,\"name\":\"x\",\"license\":\"MIT\",\"files\":[\"Ui/{control}.qml\"]}}"
+            );
+            assert!(PackageManifest::parse(invalid.as_bytes()).is_err());
+        }
     }
 
     #[test]

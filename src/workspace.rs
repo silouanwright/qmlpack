@@ -65,6 +65,7 @@ pub fn read_lock(root: &Path) -> Result<Option<Lockfile>, QmlpackError> {
 pub fn release_check(root: &Path) -> Result<PackageManifest, QmlpackError> {
     let manifest =
         PackageManifest::parse(&read_bounded(&root.join(PROJECT_FILE), MANIFEST_LIMIT)?)?;
+    let mut files = Vec::with_capacity(manifest.files.len());
     for path in &manifest.files {
         let source = root.join(path);
         let metadata = fs::symlink_metadata(&source)?;
@@ -79,8 +80,13 @@ pub fn release_check(root: &Path) -> Result<PackageManifest, QmlpackError> {
                 "declared executable mode does not match the file: {path}"
             )));
         }
-        read_bounded(&source, crate::FILE_LIMIT)?;
+        files.push(PackageFile {
+            path: path.clone(),
+            content: read_bounded(&source, crate::FILE_LIMIT)?,
+            executable,
+        });
     }
+    package_digest(&manifest, &files)?;
     Ok(manifest)
 }
 
@@ -677,6 +683,23 @@ mod tests {
         fs::write(root.path().join("tool"), b"#!/bin/sh\n").unwrap();
         fs::set_permissions(root.path().join("tool"), fs::Permissions::from_mode(0o755)).unwrap();
         assert!(release_check(root.path()).is_err());
+    }
+
+    #[test]
+    fn release_check_rejects_package_over_total_limit() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(
+            root.path().join(PROJECT_FILE),
+            br#"{"schemaVersion":1,"name":"sample","license":"MIT","files":["a","b","c","d","e"]}"#,
+        )
+        .unwrap();
+        for path in ["a", "b", "c", "d"] {
+            fs::write(root.path().join(path), vec![0; crate::FILE_LIMIT]).unwrap();
+        }
+        fs::write(root.path().join("e"), [0]).unwrap();
+
+        let error = release_check(root.path()).unwrap_err();
+        assert!(error.0.contains("package exceeds"));
     }
 
     #[test]
